@@ -7,6 +7,7 @@ using UnityEngine.UI;
 public class TrayItem : MonoBehaviour
 {
     private List<Image> _foodList;
+    public List<Image> FoodList => _foodList;
     void Awake()
     {
         _foodList = Utils.GetListInChild<Image>(this.transform);

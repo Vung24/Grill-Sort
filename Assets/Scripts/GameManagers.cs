@@ -6,6 +6,9 @@ using System.Linq;
 
 public class GameManagers : MonoBehaviour
 {
+    private static GameManagers _instance;
+    public static GameManagers Instance => _instance;
+    [SerializeField] private int _allFood; //tong so thuc an trong level > totalFood
     [SerializeField] private int _totalFood; //tong so thuc an
     [SerializeField] private int _totalGrill; //tong so bep nuong
     [SerializeField] private Transform _gridGrill; //container chua cac bep nuong
@@ -18,6 +21,7 @@ public class GameManagers : MonoBehaviour
         _listGrills = Utils.GetListInChild<GrillStation>(_gridGrill);
         Sprite[] loadedSprites = Resources.LoadAll<Sprite>("Items");
         _totalSpriteFood = loadedSprites.ToList();
+        _instance = this;
     }
     void Start()
     {
@@ -29,9 +33,11 @@ public class GameManagers : MonoBehaviour
         List<Sprite> useFood = new List<Sprite>();
         for (int i = 0; i < takeFood.Count; i++)
         {
-            for (int j = 0; j < 3; j++)
+            int n = i % takeFood.Count;
+
+            for (int j = 0; j < _allFood; j++)
             {
-                useFood.Add(takeFood[i]);
+                useFood.Add(takeFood[n]);
             }
         }
         //random vi tri item
@@ -82,5 +88,50 @@ public class GameManagers : MonoBehaviour
         }
 
         return result;
+    }
+    public void OnMinusFood()
+    {
+        --_allFood;
+        if (_allFood <= 0)
+        {
+            Debug.Log("Win Game");
+        }
+    }
+    public void OnCheckAndShake()
+    {
+        Dictionary<string, List<FoodSlot>> groups = new Dictionary<string, List<FoodSlot>>();
+
+        foreach (var grill in _listGrills)
+        {
+            if (grill.gameObject.activeInHierarchy)
+            {
+                for (int i = 0; i < grill.TotalSlots.Count; i++)
+                {
+                    FoodSlot slot = grill.TotalSlots[i];
+                    if (slot.HasFood())
+                    {
+                        string name = slot.GetSpriteFood.name;
+                        if (!groups.ContainsKey(name)) // neu chua co key name thi tao moi
+                            groups.Add(name, new List<FoodSlot>());         // them key moi voi gia tri la danh sach rong
+
+                        groups[name].Add(slot);
+                    }
+                }
+            }
+        }
+
+        foreach (var kvp in groups)
+        {
+            if (kvp.Value.Count >= 3)
+            {
+                for (int i = 0; i < 3; i++)
+                {
+                    kvp.Value[i].DoShake();
+                }
+
+                return;
+            }
+        }
+
     }
 }

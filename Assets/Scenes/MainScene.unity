@@ -15470,6 +15470,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3c10acc1dc2738a428dd78654b1ee3f3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _allFood: 22
   _totalFood: 18
   _totalGrill: 9
   _gridGrill: {fileID: 142418385}
@@ -15486,6 +15487,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _imgFoodDrag: {fileID: 309770747}
+  _timeCheckSuggest: 3
 --- !u!1 &1162136723
 GameObject:
   m_ObjectHideFlags: 0
