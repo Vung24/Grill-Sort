@@ -13,10 +13,12 @@ public class GrillStation : MonoBehaviour
     private List<FoodSlot> _totalSlots;
     private Stack<TrayItem> _stackTray = new Stack<TrayItem>();
     public List<FoodSlot> TotalSlots => _totalSlots;
+    public AudioManager audioManager;
     private void Awake()
     {
         _totalTrays = Utils.GetListInChild<TrayItem>(_trayContainer);
         _totalSlots = Utils.GetListInChild<FoodSlot>(_slotContainer);
+        audioManager = FindAnyObjectByType<AudioManager>();
     }
     public void OnInitGrill(int totalTray, List<Sprite> listFood) // khoi tao bep nuong
     {
@@ -90,7 +92,7 @@ public class GrillStation : MonoBehaviour
 
         return null;
     }
-    private void OnPrepareTray()
+    private void OnPrepareTray() 
     {
         if (_stackTray.Count > 0)
         {
@@ -129,7 +131,7 @@ public class GrillStation : MonoBehaviour
                 {
                     _totalSlots[i].OnActiveFood(false);
                 }
-
+                audioManager.PlayCompleteMission();
                 this.OnCheckPrepareTray();
                 GameManagers.Instance?.OnMinusFood();
             }
