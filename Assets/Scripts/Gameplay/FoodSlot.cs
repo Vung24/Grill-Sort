@@ -15,7 +15,7 @@ public class FoodSlot : MonoBehaviour
     {
         _imgFood = this.transform.GetChild(0).GetComponent<Image>();
         _imgFood.gameObject.SetActive(false);
-        _grillCtrl = this.transform.parent.parent.GetComponent<GrillStation>(); // lay component GrillStation tu doi tuong cha. _grillCtrl = this.getComponentInParent<GrillStation>();
+        _grillCtrl = this.transform.parent.parent.GetComponent<GrillStation>(); 
 
     }
 
@@ -51,10 +51,10 @@ public class FoodSlot : MonoBehaviour
         _imgFood.color = _normalColor;
         _imgFood.transform.position = img.transform.position;
         _imgFood.transform.localScale = img.transform.localScale;
-        _imgFood.transform.localEulerAngles = img.transform.localEulerAngles; // gan vi tri, ti le, goc xoay tu hinh anh tren dia sang foodslot
-        _imgFood.transform.DOLocalMove(Vector3.zero, 0.3f);         // di chuyen ve vi tri ban dau
-        _imgFood.transform.DOScale(Vector3.one, 0.3f);              // ve ti le ban dau
-        _imgFood.transform.DORotate(Vector3.zero, 0.3f);           // ve goc xoay ban dau
+        _imgFood.transform.localEulerAngles = img.transform.localEulerAngles; 
+        _imgFood.transform.DOLocalMove(Vector3.zero, 0.3f);         
+        _imgFood.transform.DOScale(Vector3.one, 0.3f);              
+        _imgFood.transform.DORotate(Vector3.zero, 0.3f);           
     }
 
     public void OnCheckPrepareTray()
@@ -65,10 +65,7 @@ public class FoodSlot : MonoBehaviour
     {
         _imgFood.transform.DOShakePosition(0.5f, 10f, 20, 90f, false, true);
     }
-    // public void OnCheckDrop(Sprite spr)
-    // {
-    //     _grillCtrl.OnCheckDrop(spr);
-    // }
+
     public FoodSlot GetSlotNull => _grillCtrl.GetSlotNull();
     public bool HasFood() => _imgFood.gameObject.activeInHierarchy && _imgFood.color == _normalColor; 
     public Sprite GetSpriteFood => _imgFood.sprite;

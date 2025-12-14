@@ -6,13 +6,10 @@ using UnityEngine.SceneManagement;
 
 public class UISettingsManager : MonoBehaviour
 {
-    public Button settingButton;
-    public Button Menu;
-    public Button Continue;
-    public Button playAgain;
-    public GameObject settingPanel;
-    public Button _btnClose;
-
+    [Header("Button")]
+    [SerializeField] private Button settingButton, Menu, Continue, playAgain, _btnClose;
+    [Header("Gameobject")]
+    [SerializeField] private GameObject settingPanel;
     private bool isOpen = false;
 
     void Start()
@@ -55,6 +52,11 @@ public class UISettingsManager : MonoBehaviour
 
     void LoadPlayAgainGame()
     {
+        if (LinearLevelSystem.Instance != null)
+        {
+            Destroy(LinearLevelSystem.Instance.gameObject);
+        }
+
         SceneManager.LoadScene("MainScene");
     }
 }

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-
 public class TrayItem : MonoBehaviour
 {
     private List<Image> _foodList;

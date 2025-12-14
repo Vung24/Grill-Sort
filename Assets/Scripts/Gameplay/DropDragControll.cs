@@ -15,10 +15,10 @@ public class DropDragControll : MonoBehaviour
     void Update()
     {
         _countTime += Time.deltaTime;
-        if(_countTime >= _timeCheckSuggest) // kiem tra goi y thuc an sau mot khoang thoi gian
+        if (_countTime >= _timeCheckSuggest) // kiem tra goi y thuc an sau mot khoang thoi gian
         {
             _countTime = 0f;
-            GameManagers.Instance?.OnCheckAndShake();
+            SimpleGameManager.Instance?.ShowHint();
         }
 
         if (Input.GetMouseButtonDown(0)) // check diem chuot
@@ -33,7 +33,6 @@ public class DropDragControll : MonoBehaviour
                 _imgFoodDrag.SetNativeSize();
                 _imgFoodDrag.transform.position = _currentFood.transform.position; // dat hinh anh keo tha o vi tri foodslot
 
-                //tinh offset
                 Vector3 mouseWordPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
                 _offset = mouseWordPos - _currentFood.transform.position;
                 _currentFood.OnActiveFood(false); // an foodslot dang keo tha
@@ -53,7 +52,7 @@ public class DropDragControll : MonoBehaviour
             {
                 if (!slot.HasFood()) // neu foodslot dang o vi tri chuot khong co food
                 {
-                    if ( _cacheFood == null || _cacheFood.GetInstanceID() != slot.GetInstanceID()) // neu foodslot hien tai khac foodslot dang keo tha
+                    if (_cacheFood == null || _cacheFood.GetInstanceID() != slot.GetInstanceID()) // neu foodslot hien tai khac foodslot dang keo tha
                     {
                         _cacheFood?.OnHideFood(); // an foodslot tam thoi
                         _cacheFood = slot; // cap nhat foodslot tam thoi
@@ -80,11 +79,10 @@ public class DropDragControll : MonoBehaviour
 
                     }
                 }
-
             }
             else // neu foodslot dang o vi tri chuot la null
             {
-                if(_cacheFood != null) // neu foodslot tam thoi khac null
+                if (_cacheFood != null) // neu foodslot tam thoi khac null
                 {
                     _cacheFood.OnHideFood(); // an foodslot tam thoi
                     _cacheFood = null;
@@ -94,9 +92,9 @@ public class DropDragControll : MonoBehaviour
 
         if (Input.GetMouseButtonUp(0) && _hasDrag) // khi tha chuot
         {
-            if( _cacheFood != null) // neu foodslot tam thoi khac null
+            if (_cacheFood != null) // neu foodslot tam thoi khac null
             {
-                _cacheFood.transform.DOMove(_cacheFood.transform.position, 0.15f).OnComplete(()=>
+                _cacheFood.transform.DOMove(_cacheFood.transform.position, 0.15f).OnComplete(() =>
                 {
                     _imgFoodDrag.gameObject.SetActive(false); // an hinh anh keo tha
                     _cacheFood.OnSetSlot(_currentFood.GetSpriteFood); // hien food trong foodslot tam thoi
@@ -104,26 +102,34 @@ public class DropDragControll : MonoBehaviour
                     _cacheFood.OnCheckMerge(); // kiem tra hop nhat mon an
                     _currentFood?.OnCheckPrepareTray();
 
-                    _cacheFood = null; // xoa foodslot tam thoi
-                    _currentFood = null; 
+                    _cacheFood = null;
+                    _currentFood = null;
                 });
             }
             else
             {
-                 _cacheFood.transform.DOMove(_cacheFood.transform.position, 0.3f).OnComplete(()=>
+                // Drop KHÔNG HỢP LỆ → trả item về vị trí cũ
+                if (_imgFoodDrag != null && _currentFood != null)
                 {
-                    _imgFoodDrag.gameObject.SetActive(false); // an hinh anh keo tha
-                    _currentFood.OnActiveFood(true); // hien foodslot dang keo tha
-                }); 
+                    _imgFoodDrag.transform.DOMove(
+                        _currentFood.transform.position,
+                        0.3f
+                    ).OnComplete(() =>
+                    {
+                        _imgFoodDrag.gameObject.SetActive(false);
+                        _currentFood.OnActiveFood(true);
+                    });
+                }
             }
-            _hasDrag = false; // dat lai trang thai khong keo tha
+
+            _hasDrag = false;
         }
     }
-    public void OnClearCacheSlot() // an foodslot tam thoi
+    public void OnClearCacheSlot()
     {
         if (_cacheFood != null && _cacheFood.GetInstanceID() != _currentFood.GetInstanceID())
         {
-            _cacheFood.OnHideFood(); // an foodslot tam thoi
+            _cacheFood.OnHideFood();
             _cacheFood = null;
         }
     }

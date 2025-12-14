@@ -1,11 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 
-
 public class GrillStation : MonoBehaviour
 {
+    [Header("transform")]
     [SerializeField] private Transform _trayContainer;
     [SerializeField] private Transform _slotContainer;
 
@@ -20,36 +21,45 @@ public class GrillStation : MonoBehaviour
         _totalSlots = Utils.GetListInChild<FoodSlot>(_slotContainer);
         audioManager = FindAnyObjectByType<AudioManager>();
     }
-    public void OnInitGrill(int totalTray, List<Sprite> listFood) // khoi tao bep nuong
+    public void OnInitGrill(int totalTray, List<Sprite> listFood) 
     {
-        // xu ly set gia tri cho bep truoc
-        int foodCount = Random.Range(1, _totalSlots.Count + 1); // so luong mon an tren bep
-        List<Sprite> listSlot = Utils.TakeAndRemoveRandom<Sprite>(listFood, foodCount); // lay so luong mon an tren bep
+        int foodCount = Random.Range(1, _totalSlots.Count + 1); 
+        List<Sprite> listSlot = Utils.TakeAndRemoveRandom<Sprite>(listFood, foodCount); 
         for (int i = 0; i < listSlot.Count; i++)
         {
             FoodSlot slot = this.RandomSlot();
             slot.OnSetSlot(listSlot[i]);
         }
 
-        // xu ly set dia cho bep
         List<List<Sprite>> remainFood = new List<List<Sprite>>();
-        for (int i = 0; i < totalTray - 1; i++)  //tru cho bep 1 dia da duoc xu ly o tren
+
+        for (int i = 0; i < totalTray; i++)
         {
             remainFood.Add(new List<Sprite>());
-            int n = Random.Range(0, listFood.Count);
-            remainFood[i].Add(listFood[n]);
-            listFood.RemoveAt(n);
         }
+
+        while (listFood.Count > 0 && remainFood.Count(t => t.Count == 0) > 0)
+        {
+            var emptyTrays = remainFood.FindAll(t => t.Count == 0);
+            int trayIndex = Random.Range(0, emptyTrays.Count);
+            int foodIndex = Random.Range(0, listFood.Count);
+
+            emptyTrays[trayIndex].Add(listFood[foodIndex]);
+            listFood.RemoveAt(foodIndex);
+        }
+
         while (listFood.Count > 0)
         {
-            int rans = Random.Range(0, remainFood.Count);
-            if (remainFood[rans].Count < 3) //gioi han toi da 3 mon/1 dia
-            {
-                int n = Random.Range(0, listFood.Count);
-                remainFood[rans].Add(listFood[n]);
-                listFood.RemoveAt(n);
-            }
+            var availableTrays = remainFood.Where(t => t.Count < 3).ToList();
+            if (availableTrays.Count == 0) break;
+
+            int trayIndex = Random.Range(0, availableTrays.Count);
+            int foodIndex = Random.Range(0, listFood.Count);
+
+            availableTrays[trayIndex].Add(listFood[foodIndex]);
+            listFood.RemoveAt(foodIndex);
         }
+
         for (int i = 0; i < _totalTrays.Count; i++)
         {
             bool active = i < remainFood.Count;
@@ -61,9 +71,9 @@ public class GrillStation : MonoBehaviour
                 TrayItem item = _totalTrays[i];
                 _stackTray.Push(item);
             }
-
         }
     }
+
     private FoodSlot RandomSlot()
     {
     reRand: int n = Random.Range(0, _totalSlots.Count);
@@ -71,15 +81,6 @@ public class GrillStation : MonoBehaviour
         return _totalSlots[n];
     }
 
-    // public void OnCheckDrop(Sprite spr)
-    // {
-    //     FoodSlot slotAvailable = this.GetSlotNull();
-    //     if(slotAvailable != null)
-    //     {
-    //         slotAvailable.OnSetSlot(spr);
-    //         slotAvailable.OnHideFood();
-    //     }
-    // }
     public FoodSlot GetSlotNull()
     {
         for (int i = 0; i < _totalSlots.Count; i++)
@@ -89,10 +90,10 @@ public class GrillStation : MonoBehaviour
                 return _totalSlots[i];
             }
         }
-
         return null;
     }
-    private void OnPrepareTray() 
+
+    private void OnPrepareTray()
     {
         if (_stackTray.Count > 0)
         {
@@ -100,18 +101,18 @@ public class GrillStation : MonoBehaviour
 
             for (int i = 0; i < item.FoodList.Count; i++)
             {
-               Image img = item.FoodList[i];
-               if(img.gameObject.activeInHierarchy)
-               {
-                   _totalSlots[i].OnPrepareItem(img);
-                   img.gameObject.SetActive(false);
-                //    yield return new WaitForSeconds(0.1f);
-               }
+                Image img = item.FoodList[i];
+                if (img.gameObject.activeInHierarchy)
+                {
+                    _totalSlots[i].OnPrepareItem(img);
+                    img.gameObject.SetActive(false);
+                    //    yield return new WaitForSeconds(0.1f);
+                }
             }
             item.gameObject.SetActive(false);
-            
         }
     }
+
     public void OnCheckPrepareTray()
     {
         if (this.HasGrillEmpty())
@@ -126,18 +127,40 @@ public class GrillStation : MonoBehaviour
         {
             if (this.CanMerge())
             {
-                Debug.Log("Merge Success");
+                Debug.Log("Merge Success!");
+
+                int itemsCleared = 0;
+
                 for (int i = 0; i < _totalSlots.Count; i++)
                 {
+                    if (_totalSlots[i].HasFood())
+                    {
+                        itemsCleared++;
+                    }
                     _totalSlots[i].OnActiveFood(false);
                 }
-                audioManager.PlayCompleteMission();
+
+                if (audioManager != null)
+                {
+                    audioManager.PlayCompleteMission();
+                }
+
+                // Prepare next tray
                 this.OnCheckPrepareTray();
-                GameManagers.Instance?.OnMinusFood();
+
+                // ✨ Notify GameManager - Pass number of items merged (usually 3)
+                if (SimpleGameManager.Instance != null)
+                {
+                    SimpleGameManager.Instance.OnItemsMerged(itemsCleared);
+                }
+                else
+                {
+                    Debug.LogError("⚠️ SimpleGameManager.Instance is NULL!");
+                }
             }
         }
-
     }
+
     private bool CanMerge()
     {
         string name = _totalSlots[0].GetSpriteFood.name; // lay ten mon an de so sanh
