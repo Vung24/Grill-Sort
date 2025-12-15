@@ -1,5 +1,3 @@
-// Save as: Assets/Scripts/Managers/SimpleGameManager.cs
-
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
