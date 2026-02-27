@@ -1,10 +1,9 @@
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.SceneManagement;
 using TMPro;
 using DG.Tweening;
 
-public class SimpleMenu : MonoBehaviour
+public class Menu : MonoBehaviour
 {
     [Header("Buttons")]
     [SerializeField] private Button _playButton;
@@ -17,69 +16,60 @@ public class SimpleMenu : MonoBehaviour
     [SerializeField] private float _animDuration = 0.3f;
 
     private int _currentLevel;
-    private int _highestLevel;
 
     private void Start()
     {
-        LoadProgress();
-        SetupButtons();
         UpdateUI();
         AnimateEntry();
     }
     private void OnEnable()
     {
-        LoadProgress();
+        LinearLevelSystem.EnsureInstance();
         UpdateUI();
-    }
-    private void LoadProgress()
-    {
-        _currentLevel = PlayerPrefs.GetInt("CurrentLevel", 1);
-        _highestLevel = PlayerPrefs.GetInt("HighestLevel", 1);
+        EnergyManager.EnsureInstance();
+        if (EnergyManager.Instance != null)
+        {
+            EnergyManager.Instance.OnEnergyChanged += UpdatePlayButtonState;
+        }
+        UpdatePlayButtonState();
     }
 
-    private void SetupButtons()
+    private void OnDisable()
     {
-        if (_playButton != null)
+        if (EnergyManager.Instance != null)
         {
-            _playButton.onClick.RemoveAllListeners();
-            _playButton.onClick.AddListener(OnPlayClicked);
-        }
-        if (_quitButton != null)
-        {
-            _quitButton.onClick.RemoveAllListeners();
-            _quitButton.onClick.AddListener(OnQuitClicked);
+            EnergyManager.Instance.OnEnergyChanged -= UpdatePlayButtonState;
         }
     }
+
 
     private void UpdateUI()
     {
         if (_playButtonText != null)
         {
+            _currentLevel = LinearLevelSystem.EnsureInstance().CurrentLevel;
             if (_currentLevel == 1)
             {
-                _playButtonText.text = "PLAY";
+                _playButtonText.text = "Play";
             }
             else
             {
-                _playButtonText.text = $"PLAY LEVEL {_currentLevel}";
+                _playButtonText.text = $"<size=70>Play Level {_currentLevel}</size>";
             }
         }
     }
-    private void OnPlayClicked()
+    public void OnPlayClicked()
     {
         AnimateButtonClick(_playButton, () =>
         {
-            if (LinearLevelSystem.Instance != null)
+            if (EnergyManager.Instance != null && !EnergyManager.Instance.CanPlay())
             {
-                LinearLevelSystem.Instance.ContinueGame();
+                return;
             }
-            else
-            {
-                SceneManager.LoadScene("MainScene");
-            }
+            LinearLevelSystem.EnsureInstance().ContinueGame();
         });
     }
-    private void OnQuitClicked()
+    public void OnQuitClicked()
     {
         AnimateButtonClick(_quitButton, () =>
         {
@@ -125,5 +115,21 @@ public class SimpleMenu : MonoBehaviour
     public void PlayGame()
     {
         OnPlayClicked();
+    }
+
+    private void UpdatePlayButtonState()
+    {
+        if (_playButton == null)
+        {
+            return;
+        }
+
+        if (EnergyManager.Instance == null)
+        {
+            _playButton.interactable = true;
+            return;
+        }
+
+        _playButton.interactable = EnergyManager.Instance.CanPlay();
     }
 }

@@ -7,6 +7,7 @@ public class TrayItem : MonoBehaviour
 {
     private List<Image> _foodList;
     public List<Image> FoodList => _foodList;
+
     void Awake()
     {
         _foodList = Utils.GetListInChild<Image>(this.transform);
@@ -25,7 +26,6 @@ public class TrayItem : MonoBehaviour
                 slot.gameObject.SetActive(true);
                 slot.sprite = items[i];
                 slot.SetNativeSize();
-
             }
         }
     }
@@ -34,5 +34,18 @@ public class TrayItem : MonoBehaviour
         rerand: int n = Random.Range(0, _foodList.Count);
         if(_foodList[n].gameObject.activeInHierarchy) goto rerand;
         return _foodList[n];
+    }
+
+    public bool HasAnyFood()
+    {
+        for (int i = 0; i < _foodList.Count; i++)
+        {
+            if (_foodList[i] != null && _foodList[i].gameObject.activeInHierarchy && _foodList[i].sprite != null)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

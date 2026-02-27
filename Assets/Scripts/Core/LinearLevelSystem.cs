@@ -7,28 +7,46 @@ public class LinearLevelSystem : MonoBehaviour
 {
     public static LinearLevelSystem Instance { get; private set; }
 
+    public static LinearLevelSystem EnsureInstance()
+    {
+        if (Instance != null)
+        {
+            Instance.Initialize();
+            return Instance;
+        }
+
+        LinearLevelSystem existing = FindObjectOfType<LinearLevelSystem>();
+        if (existing != null)
+        {
+            Instance = existing;
+            DontDestroyOnLoad(existing.gameObject);
+            Instance.Initialize();
+            return existing;
+        }
+
+        GameObject go = new GameObject(nameof(LinearLevelSystem));
+        LinearLevelSystem created = go.AddComponent<LinearLevelSystem>();
+        created.Initialize();
+        return created;
+    }
+
     [Header("Level Configuration")]
-    [SerializeField] private int _maxLevels = 50;
+    [SerializeField] private int _maxLevels = 20;
     [SerializeField] private int _startingLevel = 1;
 
     [Header("Scene Names")]
     [SerializeField] private string _menuSceneName = "Menu";
     [SerializeField] private string _gameSceneName = "MainScene";
 
-    [Header("Auto-Load Settings")]
-    [SerializeField] private bool _autoLoadNextLevel = true;
-    [SerializeField] private float _nextLevelDelay = 2f;
-
     private int _currentLevel;
     private int _highestLevel;
+    private bool _hasLoadedProgress;
 
     public event System.Action<int> OnLevelStarted;
     public event System.Action<int, bool> OnLevelCompleted;
     public event System.Action OnAllLevelsCompleted;
 
     public int CurrentLevel => _currentLevel;
-    public int HighestLevel => _highestLevel;
-    public bool IsLastLevel => _currentLevel >= _maxLevels;
 
     private void Awake()
     {
@@ -40,15 +58,39 @@ public class LinearLevelSystem : MonoBehaviour
 
         Instance = this;
         DontDestroyOnLoad(gameObject);
-        LoadProgress();
+        Initialize();
     }
 
-    private void Start()
+    private void OnDestroy()
     {
-        if (SceneManager.GetActiveScene().name == _gameSceneName)
+        if (Instance == this)
         {
-            StartCurrentLevel();
+            Instance = null;
         }
+    }
+
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (scene.name == _gameSceneName)
+        {
+            StartCoroutine(DelayedStartLevel());
+        }
+    }
+
+    private IEnumerator DelayedStartLevel()
+    {
+        yield return new WaitForEndOfFrame();
+        StartCurrentLevel();
     }
 
     private void LoadProgress()
@@ -57,12 +99,24 @@ public class LinearLevelSystem : MonoBehaviour
         _highestLevel = PlayerPrefs.GetInt("HighestLevel", _startingLevel);
     }
 
+    private void Initialize()
+    {
+        if (_hasLoadedProgress)
+        {
+            return;
+        }
+
+        // ResetProgress();
+        LoadProgress();
+        _hasLoadedProgress = true;
+    }
+
     private void SaveProgress()
     {
         PlayerPrefs.SetInt("CurrentLevel", _currentLevel);
         PlayerPrefs.SetInt("HighestLevel", _highestLevel);
         PlayerPrefs.Save();
-        Debug.Log($"Progress saved: Level {_currentLevel}");
+        Debug.Log($"Saved - Current: {_currentLevel}, Highest: {_highestLevel}");
     }
 
     public void ResetProgress()
@@ -70,81 +124,60 @@ public class LinearLevelSystem : MonoBehaviour
         _currentLevel = _startingLevel;
         _highestLevel = _startingLevel;
         SaveProgress();
-        Debug.Log("Progress reset to Level 1");
     }
 
     public void StartCurrentLevel()
     {
         Debug.Log($"Starting Level {_currentLevel}");
-        if (CustomLevelGenerator.Instance != null)
-        {
-            if (!CustomLevelGenerator.Instance.HasLevel(_currentLevel))
-            {
-                Debug.LogError($"💡 Create: Resources/Levels/level_{_currentLevel}.json");
-                return;
-            }
 
-            OnLevelStarted?.Invoke(_currentLevel);
-            CustomLevelGenerator.Instance.GenerateLevel(_currentLevel);
-        }
-        else if (CustomLevelGenerator.Instance != null)
+        if (CustomLevelGenerator.Instance == null)
         {
-            OnLevelStarted?.Invoke(_currentLevel);
-            CustomLevelGenerator.Instance.GenerateLevel(_currentLevel);
+            Debug.LogWarning("Cannot start level because CustomLevelGenerator is missing.");
+            return;
         }
-        else
+
+        EnsureCurrentLevelIsValid();
+
+        if (!CustomLevelGenerator.Instance.HasLevel(_currentLevel))
         {
-            Debug.LogError("No level gene");
+            Debug.LogWarning($"Cannot start level {_currentLevel}: level file is missing.");
+            return;
         }
+
+        OnLevelStarted?.Invoke(_currentLevel);
+        CustomLevelGenerator.Instance.GenerateLevel(_currentLevel);
     }
 
     public void CompleteCurrentLevel()
     {
-        bool isNewRecord = _currentLevel >= _highestLevel;
-        if (isNewRecord)
-        {
-            _highestLevel = _currentLevel + 1;
-            Debug.Log($"New record{_highestLevel}");
-        }
+        int completedLevel = _currentLevel;
 
-        OnLevelCompleted?.Invoke(_currentLevel, isNewRecord);
+        _currentLevel++;
+
+        if (_currentLevel > _highestLevel)
+        {
+            _highestLevel = _currentLevel;
+        }
         SaveProgress();
 
-        if (IsLastLevel)
+        OnLevelCompleted?.Invoke(completedLevel, _currentLevel > completedLevel);
+
+        if (_currentLevel > _maxLevels)
         {
             OnAllLevelsCompleted?.Invoke();
         }
-        else
-        {
-            if (_autoLoadNextLevel)
-            {
-                StartCoroutine(LoadNextLevelAfterDelay());
-            }
-        }
+
+        Debug.Log($"Next: Level {_currentLevel}");
     }
 
     public void NextLevel()
     {
-        if (!IsLastLevel)
-        {
-            _currentLevel++;
-            SaveProgress();
-
-            if (SceneManager.GetActiveScene().name == _gameSceneName)
-            {
-                StartCurrentLevel();
-            }
-            else
-            {
-                LoadGameScene();
-            }
-        }
+        LoadGameScene();
     }
 
     public void RestartLevel()
     {
-        Debug.Log($"Restarting Level {_currentLevel}");
-        StartCurrentLevel();
+        LoadGameScene();
     }
 
     public void StartNewGame()
@@ -159,43 +192,68 @@ public class LinearLevelSystem : MonoBehaviour
         LoadGameScene();
     }
 
-    private IEnumerator LoadNextLevelAfterDelay()
-    {
-        yield return new WaitForSeconds(_nextLevelDelay);
-        NextLevel();
-    }
-
     public void LoadGameScene()
     {
+        Time.timeScale = 1f;
         SceneManager.LoadScene(_gameSceneName);
     }
 
     public void LoadMenuScene()
     {
+        Time.timeScale = 1f;
         SceneManager.LoadScene(_menuSceneName);
     }
 
     public int GetDifficultyTier(int levelNumber)
     {
         if (levelNumber <= 5) return 1;
-        if (levelNumber <= 15) return 2;
-        if (levelNumber <= 30) return 3;
-        if (levelNumber <= 50) return 4;
-        return 5;
+        if (levelNumber <= 10) return 2;
+        if (levelNumber <= 20) return 3;
+        return 4;
     }
 
     public int CurrentDifficulty => GetDifficultyTier(_currentLevel);
 
     public string GetDifficultyName(int tier)
     {
-        switch (tier)
+        return tier switch
         {
-            case 1: return "Easy";
-            case 2: return "Medium";
-            case 3: return "Hard";
-            case 4: return "Expert";
-            case 5: return "Master";
-            default: return "Unknown";
+            1 => "Easy",
+            2 => "Medium",
+            3 => "Hard",
+            _ => "Unknown"
+        };
+    }
+
+    private void EnsureCurrentLevelIsValid()
+    {
+        if (CustomLevelGenerator.Instance == null)
+        {
+            return;
         }
+
+        if (CustomLevelGenerator.Instance.HasLevel(_currentLevel))
+        {
+            return;
+        }
+
+        int totalLevels = CustomLevelGenerator.Instance.GetTotalLevels();
+        int fallbackLevel = Mathf.Clamp(_currentLevel, _startingLevel, Mathf.Max(_startingLevel, totalLevels));
+
+        if (!CustomLevelGenerator.Instance.HasLevel(fallbackLevel))
+        {
+            fallbackLevel = _startingLevel;
+        }
+
+        if (!CustomLevelGenerator.Instance.HasLevel(fallbackLevel))
+        {
+            Debug.LogWarning("No level data found in Resources/Levels.");
+            return;
+        }
+
+        Debug.LogWarning($"Level {_currentLevel} not found. Fallback to level {fallbackLevel}.");
+        _currentLevel = fallbackLevel;
+        _highestLevel = Mathf.Max(_highestLevel, _currentLevel);
+        SaveProgress();
     }
 }

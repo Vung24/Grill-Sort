@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class AudioManager : MonoBehaviour
 {
-    public static AudioManager instance;
+    public static AudioManager Instance { get; private set; }
 
     [SerializeField] public AudioSource backgroundAudio;
     [SerializeField] public AudioSource effectAudio;
@@ -12,12 +12,19 @@ public class AudioManager : MonoBehaviour
     [SerializeField] public AudioClip completeMission;
     [SerializeField] public AudioClip missionStart;
 
-    private bool soundOn = true;  
+    private bool soundOn = true;
 
     void Awake()
     {
-        instance = this; 
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        Instance = this;
     }
+
 
     void Start()
     {
@@ -44,7 +51,7 @@ public class AudioManager : MonoBehaviour
     }
     public void ToggleSound()
     {
-        soundOn = !soundOn;  
+        soundOn = !soundOn;
 
         backgroundAudio.mute = !soundOn;
         effectAudio.mute = !soundOn;

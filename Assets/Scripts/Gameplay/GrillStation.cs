@@ -9,22 +9,22 @@ public class GrillStation : MonoBehaviour
     [Header("transform")]
     [SerializeField] private Transform _trayContainer;
     [SerializeField] private Transform _slotContainer;
-
+    [Header("list")]
     private List<TrayItem> _totalTrays;
     private List<FoodSlot> _totalSlots;
     private Stack<TrayItem> _stackTray = new Stack<TrayItem>();
     public List<FoodSlot> TotalSlots => _totalSlots;
-    public AudioManager audioManager;
+    public Transform TrayContainer => _trayContainer;
+    public Transform SlotContainer => _slotContainer;
     private void Awake()
     {
         _totalTrays = Utils.GetListInChild<TrayItem>(_trayContainer);
         _totalSlots = Utils.GetListInChild<FoodSlot>(_slotContainer);
-        audioManager = FindAnyObjectByType<AudioManager>();
     }
-    public void OnInitGrill(int totalTray, List<Sprite> listFood) 
+    public void OnInitGrill(int totalTray, List<Sprite> listFood)
     {
-        int foodCount = Random.Range(1, _totalSlots.Count + 1); 
-        List<Sprite> listSlot = Utils.TakeAndRemoveRandom<Sprite>(listFood, foodCount); 
+        int foodCount = Random.Range(1, _totalSlots.Count + 1);
+        List<Sprite> listSlot = Utils.TakeAndRemoveRandom<Sprite>(listFood, foodCount);
         for (int i = 0; i < listSlot.Count; i++)
         {
             FoodSlot slot = this.RandomSlot();
@@ -62,14 +62,23 @@ public class GrillStation : MonoBehaviour
 
         for (int i = 0; i < _totalTrays.Count; i++)
         {
-            bool active = i < remainFood.Count;
-            _totalTrays[i].gameObject.SetActive(active);
-
-            if (active)
+            if (i < remainFood.Count)
             {
-                _totalTrays[i].OnSetFood(remainFood[i]);
-                TrayItem item = _totalTrays[i];
-                _stackTray.Push(item);
+                if (remainFood[i].Count > 0)
+                {
+                    _totalTrays[i].gameObject.SetActive(true);
+                    _totalTrays[i].OnSetFood(remainFood[i]);
+                    _stackTray.Push(_totalTrays[i]);
+                }
+                else
+                {
+                    _totalTrays[i].gameObject.SetActive(false);
+                    Debug.Log($"Tray {i}");
+                }
+            }
+            else
+            {
+                _totalTrays[i].gameObject.SetActive(false);
             }
         }
     }
@@ -95,21 +104,33 @@ public class GrillStation : MonoBehaviour
 
     private void OnPrepareTray()
     {
-        if (_stackTray.Count > 0)
+        while (_stackTray.Count > 0)
         {
-            TrayItem item = _stackTray.Pop(); // lay dia tiep theo de xu ly va xoa khoi ngan xep
+            TrayItem item = _stackTray.Pop();
+            if (item == null)
+            {
+                continue;
+            }
 
-            for (int i = 0; i < item.FoodList.Count; i++)
+            bool movedAny = false;
+
+            for (int i = 0; i < item.FoodList.Count && i < _totalSlots.Count; i++)
             {
                 Image img = item.FoodList[i];
-                if (img.gameObject.activeInHierarchy)
+                if (img != null && img.gameObject.activeInHierarchy)
                 {
                     _totalSlots[i].OnPrepareItem(img);
                     img.gameObject.SetActive(false);
-                    //    yield return new WaitForSeconds(0.1f);
+                    movedAny = true;
                 }
             }
+
             item.gameObject.SetActive(false);
+
+            if (movedAny)
+            {
+                return;
+            }
         }
     }
 
@@ -127,8 +148,6 @@ public class GrillStation : MonoBehaviour
         {
             if (this.CanMerge())
             {
-                Debug.Log("Merge Success!");
-
                 int itemsCleared = 0;
 
                 for (int i = 0; i < _totalSlots.Count; i++)
@@ -140,33 +159,24 @@ public class GrillStation : MonoBehaviour
                     _totalSlots[i].OnActiveFood(false);
                 }
 
-                if (audioManager != null)
+                if (AudioManager.Instance != null)
                 {
-                    audioManager.PlayCompleteMission();
+                    AudioManager.Instance.PlayCompleteMission();
                 }
 
-                // Prepare next tray
                 this.OnCheckPrepareTray();
+                GameManager.Instance.OnItemsMerged(itemsCleared);
 
-                // ✨ Notify GameManager - Pass number of items merged (usually 3)
-                if (SimpleGameManager.Instance != null)
-                {
-                    SimpleGameManager.Instance.OnItemsMerged(itemsCleared);
-                }
-                else
-                {
-                    Debug.LogError("⚠️ SimpleGameManager.Instance is NULL!");
-                }
             }
         }
     }
 
     private bool CanMerge()
     {
-        string name = _totalSlots[0].GetSpriteFood.name; // lay ten mon an de so sanh
+        string name = _totalSlots[0].GetSpriteFood.name;
         for (int i = 1; i < _totalSlots.Count; i++)
         {
-            if (_totalSlots[i].GetSpriteFood.name != name) // neu co mon an khac ten
+            if (_totalSlots[i].GetSpriteFood.name != name)
             {
                 return false;
             }
@@ -183,5 +193,47 @@ public class GrillStation : MonoBehaviour
             }
         }
         return true;
+    }
+
+    public List<Image> GetHiddenFoodImages()
+    {
+        List<Image> hiddenFoods = new List<Image>();
+
+        foreach (TrayItem tray in _totalTrays)
+        {
+            if (tray == null || !tray.gameObject.activeInHierarchy) continue;
+
+            foreach (Image img in tray.FoodList)
+            {
+                if (img == null || !img.gameObject.activeInHierarchy || img.sprite == null) continue;
+                hiddenFoods.Add(img);
+            }
+        }
+
+        return hiddenFoods;
+    }
+
+    public void ResolveAfterBoost()
+    {
+        HideEmptyTrays();
+
+        if (HasGrillEmpty())
+        {
+            OnPrepareTray();
+        }
+    }
+
+    private void HideEmptyTrays()
+    {
+        for (int i = 0; i < _totalTrays.Count; i++)
+        {
+            TrayItem tray = _totalTrays[i];
+            if (tray == null || !tray.gameObject.activeInHierarchy) continue;
+
+            if (!tray.HasAnyFood())
+            {
+                tray.gameObject.SetActive(false);
+            }
+        }
     }
 }
