@@ -7,6 +7,13 @@ using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
+    public enum LoseReason
+    {
+        None = 0,
+        TimeUp = 1,
+        OutOfSlot = 2
+    }
+
     public static GameManager Instance { get; private set; }
 
     [Header("References")]
@@ -35,6 +42,9 @@ public class GameManager : MonoBehaviour
     private bool _levelWon;
     private bool _hasMovedFood;
     private bool _energyConsumedThisAttempt;
+    private LoseReason _currentLoseReason;
+
+    public event System.Action<float, int, int> OnMergeProgressChanged;
 
     private void Awake()
     {
@@ -46,6 +56,7 @@ public class GameManager : MonoBehaviour
     private void Start()
     {
         _levelComplete = false;
+        _currentLoseReason = LoseReason.None;
 
         if (_winPanel != null) _winPanel.SetActive(false);
         if (_losePanel != null) _losePanel.SetActive(false);
@@ -67,6 +78,7 @@ public class GameManager : MonoBehaviour
         _itemsMerged = 0;
         _levelComplete = false;
         _levelWon = false;
+        _currentLoseReason = LoseReason.None;
         _hintTimer = 0f;
         _hasMovedFood = false;
         _energyConsumedThisAttempt = false;
@@ -81,6 +93,7 @@ public class GameManager : MonoBehaviour
         Debug.Log($"Level time limit: {_levelTimeLimit} seconds");
 
         UpdateTimerDisplay();
+        NotifyMergeProgressChanged();
     }
 
     public void OnItemsMerged(int count)
@@ -92,6 +105,7 @@ public class GameManager : MonoBehaviour
 
         _itemsMerged += count;
         _hintTimer = 0f;
+        NotifyMergeProgressChanged();
         if (IsBoardCleared())
         {
             OnLevelWin();
@@ -139,12 +153,13 @@ public class GameManager : MonoBehaviour
         LinearLevelSystem.Instance?.CompleteCurrentLevel();
     }
 
-    private void OnLevelLose()
+    private void OnLevelLose(LoseReason reason)
     {
         if (_levelComplete) return;
 
         _levelComplete = true;
         _levelWon = false;
+        _currentLoseReason = reason;
         SetTimerVisible(false);
         //audio 
         if (_losePanel != null)
@@ -176,7 +191,7 @@ public class GameManager : MonoBehaviour
 
         if (allGrillsFull && !CanMakeAnyMove())
         {
-            OnLevelLose();
+            OnLevelLose(LoseReason.OutOfSlot);
         }
     }
 
@@ -229,7 +244,7 @@ public class GameManager : MonoBehaviour
         if (_currentTime <= 0f)
         {
             _currentTime = 0f;
-            OnLevelLose(); 
+            OnLevelLose(LoseReason.TimeUp); 
         }
 
         UpdateTimerDisplay();
@@ -316,9 +331,14 @@ public class GameManager : MonoBehaviour
 
     public float CurrentTime => _currentTime;
     public float LevelTimeLimit => _levelTimeLimit;
+    public float MergeProgress => _totalItemsToMerge > 0 ? Mathf.Clamp01((float)_itemsMerged / _totalItemsToMerge) : 0f;
+    public int ItemsMerged => _itemsMerged;
+    public int TotalItemsToMerge => _totalItemsToMerge;
     public bool HasMovedFood => _hasMovedFood;
     public bool IsLevelComplete => _levelComplete;
     public bool IsLevelWon => _levelWon;
+    public LoseReason CurrentLoseReason => _currentLoseReason;
+    public bool IsTimerPaused => _isTimerPaused;
 
     public void MarkFoodMoved()
     {
@@ -540,6 +560,32 @@ public class GameManager : MonoBehaviour
         Debug.Log("Boost SwapForMerge: swapped all visible items and prepared merge setup.");
 
         _hintTimer = 0f;
+        return true;
+    }
+
+    public bool UseBoostAddThirtySeconds()
+    {
+        if (!CanUseBoostAddThirtySeconds())
+        {
+            return false;
+        }
+
+        ApplyAddTimeSeconds(30f);
+        return true;
+    }
+
+    public bool CanUseBoostAddThirtySeconds()
+    {
+        if (_levelComplete)
+        {
+            return false;
+        }
+
+        if (_levelTimeLimit <= 0f)
+        {
+            return false;
+        }
+
         return true;
     }
 
@@ -867,5 +913,18 @@ public class GameManager : MonoBehaviour
     {
         if (_timerText == null) return;
         _timerText.gameObject.SetActive(isVisible);
+    }
+
+    private void ApplyAddTimeSeconds(float addSeconds)
+    {
+        _currentTime += Mathf.Max(0f, addSeconds);
+        _hintTimer = 0f;
+        UpdateTimerDisplay();
+        Debug.Log($"Boost AddTime: +{addSeconds:0}s. Current time: {_currentTime:0.00}s");
+    }
+
+    private void NotifyMergeProgressChanged()
+    {
+        OnMergeProgressChanged?.Invoke(MergeProgress, _itemsMerged, _totalItemsToMerge);
     }
 }

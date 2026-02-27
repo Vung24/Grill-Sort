@@ -2,7 +2,6 @@ using UnityEngine;
 
 public class GameplayButtonManager : MonoBehaviour
 {
-    // Debug flags: set in code, not part of normal gameplay flow.
     private const bool FORCE_RESET_BOOST_ON_START = true;
     private const bool FORCE_UNLIMITED_BOOST_ON_START = false;
 
@@ -16,19 +15,21 @@ public class GameplayButtonManager : MonoBehaviour
     [SerializeField] private UILoseGame _loseGame;
 
     [Header("Boosts")]
-    [SerializeField] private BoostRemove _boostRemoveThree;
-    [SerializeField] private BoostSwap _boostSwapForMerge;
+    [SerializeField] private BoostRemove _boostRemove;
+    [SerializeField] private BoostSwap _boostSwap;
+    [SerializeField] private BoostAddTime _boostAddTime;
 
     [Header("Audio")]
     [SerializeField] private VolumeButton _volumeButton;
 
     private void Start()
     {
-        // _boostRemoveThree.EnableUnlimitedUse();
-        _boostRemoveThree.ResetBoostToDefault();
-        _boostSwapForMerge.EnableUnlimitedUse();
-        // _boostSwapForMerge.ResetBoostToDefault();
-
+        // _boostRemove.ResetBoostToDefault();
+        // _boostSwap.ResetBoostToDefault();
+        // _boostAddTime.ResetBoostToDefault();
+        // _boostRemove.EnableUnlimitedUse();
+        // _boostSwap.EnableUnlimitedUse();
+        _boostAddTime?.EnableUnlimitedUse();
     }
 
     public void SettingsToggle()
@@ -78,12 +79,27 @@ public class GameplayButtonManager : MonoBehaviour
 
     public void BoostRemoveThree()
     {
-        _boostRemoveThree?.OnUseBoost();
+        _boostRemove?.OnUseBoost();
     }
 
     public void BoostSwapForMerge()
     {
-        _boostSwapForMerge?.OnUseBoost();
+        _boostSwap?.OnUseBoost();
+    }
+
+    public void BoostAddTime30()
+    {
+        _boostAddTime?.OnUseBoost();
+    }
+
+    public void BoostAddTime30Unlimited()
+    {
+        _boostAddTime?.EnableUnlimitedUse();
+    }
+
+    public void BoostAddTime30Reset()
+    {
+        _boostAddTime?.ResetBoostToDefault();
     }
 
     public void ToggleVolume()

@@ -2,7 +2,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class EnergyUI : MonoBehaviour
+public class Energy : MonoBehaviour
 {
     [Header("UI")]
     [SerializeField] private TextMeshProUGUI _countEnergyText;
