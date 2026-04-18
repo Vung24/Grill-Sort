@@ -4,9 +4,9 @@ using UnityEngine;
 using UnityEngine.UI;
 
 
-public class CustomLevelGenerator : MonoBehaviour
+public class GeneratorLevel : MonoBehaviour
 {
-    public static CustomLevelGenerator Instance { get; private set; }
+    public static GeneratorLevel Instance { get; private set; }
 
     [Header("JSON Settings")]
     [SerializeField] private string _levelFilePrefix = "level_";
@@ -49,19 +49,17 @@ public class CustomLevelGenerator : MonoBehaviour
         {
             return;
         }
-        GenerateFromJSONData(_currentLevelData);
+        GenFromJson(_currentLevelData);
     }
 
-    private void GenerateFromJSONData(LevelDataFromJSON data)
+    private void GenFromJson(LevelDataFromJSON data)
     {
-        int totalWare = data.spawnWareData.totalWare;
-        int totalTypes = data.spawnWareData.totalWarePattern;
-        int totalGridPositions = data.boardData.listTrayData.Count;
+        int wareCount = data.spawnWareData.totalWare;
+        int typeCount = data.spawnWareData.totalWarePattern;
+        int gridCount = data.boardData.listTrayData.Count;
 
-        int activeGrills = 0;
-        int totalTrays = 0;
-        List<int> activeGrillIndices = new List<int>();
-        for (int i = 0; i < totalGridPositions; i++)
+        List<int> activeIds = new List<int>();
+        for (int i = 0; i < gridCount; i++)
         {
             TrayDataInfo trayInfo = data.boardData.listTrayData[i];
 
@@ -70,53 +68,50 @@ public class CustomLevelGenerator : MonoBehaviour
             }
             else
             {
-                int traySize = trayInfo.size;
-                activeGrills++;
-                totalTrays += traySize;
-                activeGrillIndices.Add(i);
+                activeIds.Add(i);
             }
         }
 
-        if (totalWare % 3 != 0)
+        if (wareCount % 3 != 0)
         {
-            Debug.LogWarning($"totalWare ({totalWare}) NOT divisible by 3! Leftover: {totalWare % 3}");
+            Debug.LogWarning($"totalWare ({wareCount}) NOT divisible by 3! Leftover: {wareCount % 3}");
         }
 
-        List<Sprite> selectedFoods = SelectRandomFoods(totalTypes);
-        if (selectedFoods.Count == 0)
+        List<Sprite> pickedFoods = PickFoods(typeCount);
+        if (pickedFoods.Count == 0)
         {
             Debug.LogWarning("No food sprites found in Resources/Items.");
             return;
         }
 
-        if (selectedFoods.Count < totalTypes)
+        if (pickedFoods.Count < typeCount)
         {
-            Debug.LogWarning($"Requested {totalTypes} food types but only {selectedFoods.Count} are available.");
+            Debug.LogWarning($"Requested {typeCount} food types but only {pickedFoods.Count} are available.");
         }
 
-        List<Sprite> foodPool = CreateBalancedFoodPool(selectedFoods, totalWare);
+        List<Sprite> foodPool = MakeFoodPool(pickedFoods, wareCount);
         ShuffleList(foodPool);
-        int generatedItemCount = foodPool.Count;
+        int itemCount = foodPool.Count;
 
-        if (generatedItemCount != totalWare)
+        if (itemCount != wareCount)
         {
-            Debug.LogWarning($"Level food pool mismatch. Requested: {totalWare}, Generated: {generatedItemCount}");
+            Debug.LogWarning($"Level food pool mismatch. Requested: {wareCount}, Generated: {itemCount}");
         }
 
-        DistributeToGrillsFromJSON(data, foodPool, activeGrillIndices);
-        DisableGrill(activeGrillIndices);
+        DistToGrills(data, foodPool, activeIds);
+        DisableGrill(activeIds);
         if (GameManager.Instance != null)
         {
-            GameManager.Instance.OnLevelGenerated(generatedItemCount);
+            GameManager.Instance.OnLevelGenerated(itemCount);
         }
 
     }
 
-    private void DistributeToGrillsFromJSON(LevelDataFromJSON data, List<Sprite> foodPool, List<int> activeGrillIndices)
+    private void DistToGrills(LevelDataFromJSON data, List<Sprite> foodPool, List<int> activeIds)
     {
         List<int> traysPerGrill = new List<int>();
 
-        foreach (int grillIndex in activeGrillIndices)
+        foreach (int grillIndex in activeIds)
         {
             TrayDataInfo trayInfo = data.boardData.listTrayData[grillIndex];
 
@@ -127,19 +122,159 @@ public class CustomLevelGenerator : MonoBehaviour
             }
         }
 
-        List<int> foodPerGrill = DistributeEvenly(activeGrillIndices.Count, foodPool.Count);
+        List<int> perGrill = SplitEvenly(activeIds.Count, foodPool.Count);
+        List<List<Sprite>> foodsByGrill = Build2Plus1(foodPool, perGrill);
 
-        for (int i = 0; i < activeGrillIndices.Count; i++)
+        for (int i = 0; i < activeIds.Count; i++)
         {
-            int jsonIndex = activeGrillIndices[i];
+            int jsonIndex = activeIds[i];
             if (jsonIndex >= _grillStations.Count) continue;
 
             GrillStation grill = _grillStations[jsonIndex];
             grill.gameObject.SetActive(true);
 
-            List<Sprite> grillFood = Utils.TakeAndRemoveRandom(foodPool, foodPerGrill[i]);
-            grill.OnInitGrill(traysPerGrill[i], grillFood);
+            List<Sprite> grillFood = i < foodsByGrill.Count ? foodsByGrill[i] : new List<Sprite>();
+            grill.OnInitGrill(traysPerGrill[i], grillFood, false);
         }
+    }
+
+    private List<List<Sprite>> Build2Plus1(List<Sprite> foodPool, List<int> foodPerGrill)
+    {
+        int gCount = foodPerGrill != null ? foodPerGrill.Count : 0;
+        List<List<Sprite>> result = new List<List<Sprite>>();
+
+        if (gCount <= 0)
+        {
+            return result;
+        }
+
+        List<int> capLeft = new List<int>(foodPerGrill);
+        for (int i = 0; i < gCount; i++)
+        {
+            result.Add(new List<Sprite>());
+        }
+
+        if (foodPool == null || foodPool.Count == 0)
+        {
+            return result;
+        }
+
+        Dictionary<Sprite, int> typeMap = new Dictionary<Sprite, int>();
+        foreach (Sprite food in foodPool)
+        {
+            if (food == null) continue;
+
+            if (!typeMap.ContainsKey(food))
+            {
+                typeMap[food] = 0;
+            }
+            typeMap[food]++;
+        }
+
+        List<Sprite> triples = new List<Sprite>();
+        List<Sprite> leftovers = new List<Sprite>();
+
+        foreach (KeyValuePair<Sprite, int> kv in typeMap)
+        {
+            int tripleCount = kv.Value / 3;
+            int remain = kv.Value % 3;
+
+            for (int i = 0; i < tripleCount; i++)
+            {
+                triples.Add(kv.Key);
+            }
+
+            for (int i = 0; i < remain; i++)
+            {
+                leftovers.Add(kv.Key);
+            }
+        }
+
+        ShuffleList(triples);
+        ShuffleList(leftovers);
+
+        if (gCount == 1)
+        {
+            foreach (Sprite food in foodPool)
+            {
+                if (capLeft[0] <= 0) break;
+                result[0].Add(food);
+                capLeft[0]--;
+            }
+
+            return result;
+        }
+
+        foreach (Sprite tripleFood in triples)
+        {
+            List<int> pairOpts = new List<int>();
+            for (int i = 0; i < gCount; i++)
+            {
+                if (capLeft[i] >= 2)
+                {
+                    pairOpts.Add(i);
+                }
+            }
+
+            if (pairOpts.Count == 0)
+            {
+                leftovers.Add(tripleFood);
+                leftovers.Add(tripleFood);
+                leftovers.Add(tripleFood);
+                continue;
+            }
+
+            int pairGrill = pairOpts[Random.Range(0, pairOpts.Count)];
+
+            List<int> singleOpts = new List<int>();
+            for (int i = 0; i < gCount; i++)
+            {
+                if (i != pairGrill && capLeft[i] >= 1)
+                {
+                    singleOpts.Add(i);
+                }
+            }
+
+            if (singleOpts.Count == 0)
+            {
+                leftovers.Add(tripleFood);
+                leftovers.Add(tripleFood);
+                leftovers.Add(tripleFood);
+                continue;
+            }
+
+            int singleGrill = singleOpts[Random.Range(0, singleOpts.Count)];
+
+            result[pairGrill].Add(tripleFood);
+            result[pairGrill].Add(tripleFood);
+            capLeft[pairGrill] -= 2;
+
+            result[singleGrill].Add(tripleFood);
+            capLeft[singleGrill] -= 1;
+        }
+
+        foreach (Sprite food in leftovers)
+        {
+            List<int> available = new List<int>();
+            for (int i = 0; i < gCount; i++)
+            {
+                if (capLeft[i] > 0)
+                {
+                    available.Add(i);
+                }
+            }
+
+            if (available.Count == 0)
+            {
+                break;
+            }
+
+            int target = available[Random.Range(0, available.Count)];
+            result[target].Add(food);
+            capLeft[target]--;
+        }
+
+        return result;
     }
     public void DisableGrill(List<int> activeGrillIndices)
     {
@@ -156,7 +291,7 @@ public class CustomLevelGenerator : MonoBehaviour
             }
         }
     }
-    private List<Sprite> SelectRandomFoods(int count)
+    private List<Sprite> PickFoods(int count)
     {
         if (_availableFoodSprites == null || _availableFoodSprites.Count == 0 || count <= 0)
         {
@@ -167,7 +302,7 @@ public class CustomLevelGenerator : MonoBehaviour
         return _availableFoodSprites.OrderBy(x => Random.value).Take(safeCount).ToList();
     }
 
-    private List<Sprite> CreateBalancedFoodPool(List<Sprite> foodTypes, int totalCount)
+    private List<Sprite> MakeFoodPool(List<Sprite> foodTypes, int totalCount)
     {
         List<Sprite> pool = new List<Sprite>();
 
@@ -210,7 +345,7 @@ public class CustomLevelGenerator : MonoBehaviour
         return pool;
     }
 
-    private List<int> DistributeEvenly(int bucketCount, int totalItems)
+    private List<int> SplitEvenly(int bucketCount, int totalItems)
     {
         List<int> distribution = new List<int>();
 
@@ -274,7 +409,7 @@ public class CustomLevelGenerator : MonoBehaviour
     }
 
 
-    #region Debug Tools
+    #region Test
 
 #if UNITY_EDITOR
     [ContextMenu("Test Load Level 1")]

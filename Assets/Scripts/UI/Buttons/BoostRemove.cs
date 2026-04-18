@@ -103,5 +103,10 @@ public class BoostRemove : MonoBehaviour
         {
             _countText.text = isUnlimited ? "N" : count.ToString();
         }
+
+        if (_button != null)
+        {
+            _button.interactable = isUnlimited || count > 0;
+        }
     }
 }

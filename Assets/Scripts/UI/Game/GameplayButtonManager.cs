@@ -24,12 +24,12 @@ public class GameplayButtonManager : MonoBehaviour
 
     private void Start()
     {
-        // _boostRemove.ResetBoostToDefault();
-        // _boostSwap.ResetBoostToDefault();
-        // _boostAddTime.ResetBoostToDefault();
-        // _boostRemove.EnableUnlimitedUse();
-        // _boostSwap.EnableUnlimitedUse();
-        _boostAddTime?.EnableUnlimitedUse();
+        _boostRemove.ResetBoostToDefault();
+        _boostSwap.ResetBoostToDefault();
+        _boostAddTime.ResetBoostToDefault();
+        // // _boostRemove.EnableUnlimitedUse();
+        // // _boostSwap.EnableUnlimitedUse();
+        // _boostAddTime?.EnableUnlimitedUse();
     }
 
     public void SettingsToggle()

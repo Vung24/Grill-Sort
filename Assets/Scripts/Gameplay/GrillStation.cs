@@ -21,14 +21,18 @@ public class GrillStation : MonoBehaviour
         _totalTrays = Utils.GetListInChild<TrayItem>(_trayContainer);
         _totalSlots = Utils.GetListInChild<FoodSlot>(_slotContainer);
     }
-    public void OnInitGrill(int totalTray, List<Sprite> listFood)
+    public void OnInitGrill(int totalTray, List<Sprite> listFood, bool spawnMergeReady = false)
     {
-        int foodCount = Random.Range(1, _totalSlots.Count + 1);
-        List<Sprite> listSlot = Utils.TakeAndRemoveRandom<Sprite>(listFood, foodCount);
-        for (int i = 0; i < listSlot.Count; i++)
+        bool hasPreparedMergeReady = spawnMergeReady && TryAssignMergeReadySlots(listFood);
+        if (!hasPreparedMergeReady)
         {
-            FoodSlot slot = this.RandomSlot();
-            slot.OnSetSlot(listSlot[i]);
+            int foodCount = Random.Range(1, _totalSlots.Count + 1);
+            List<Sprite> listSlot = Utils.TakeAndRemoveRandom<Sprite>(listFood, foodCount);
+            for (int i = 0; i < listSlot.Count; i++)
+            {
+                FoodSlot slot = this.RandomSlot();
+                slot.OnSetSlot(listSlot[i]);
+            }
         }
 
         List<List<Sprite>> remainFood = new List<List<Sprite>>();
@@ -81,6 +85,40 @@ public class GrillStation : MonoBehaviour
                 _totalTrays[i].gameObject.SetActive(false);
             }
         }
+    }
+
+    private bool TryAssignMergeReadySlots(List<Sprite> listFood)
+    {
+        if (listFood == null || _totalSlots == null)
+        {
+            return false;
+        }
+
+        int requiredCount = _totalSlots.Count;
+        if (requiredCount <= 0 || listFood.Count < requiredCount)
+        {
+            return false;
+        }
+
+        List<Sprite> candidates = listFood
+            .GroupBy(s => s)
+            .Where(g => g.Count() >= requiredCount)
+            .Select(g => g.Key)
+            .ToList();
+
+        if (candidates.Count == 0)
+        {
+            return false;
+        }
+
+        Sprite chosenFood = candidates[Random.Range(0, candidates.Count)];
+        for (int i = 0; i < requiredCount; i++)
+        {
+            listFood.Remove(chosenFood);
+            _totalSlots[i].OnSetSlot(chosenFood);
+        }
+
+        return true;
     }
 
     private FoodSlot RandomSlot()

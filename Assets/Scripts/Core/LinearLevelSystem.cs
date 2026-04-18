@@ -130,22 +130,22 @@ public class LinearLevelSystem : MonoBehaviour
     {
         Debug.Log($"Starting Level {_currentLevel}");
 
-        if (CustomLevelGenerator.Instance == null)
+        if (GeneratorLevel.Instance == null)
         {
-            Debug.LogWarning("Cannot start level because CustomLevelGenerator is missing.");
+            Debug.LogWarning("Cannot start level because GeneratorLevel is missing.");
             return;
         }
 
         EnsureCurrentLevelIsValid();
 
-        if (!CustomLevelGenerator.Instance.HasLevel(_currentLevel))
+        if (!GeneratorLevel.Instance.HasLevel(_currentLevel))
         {
             Debug.LogWarning($"Cannot start level {_currentLevel}: level file is missing.");
             return;
         }
 
         OnLevelStarted?.Invoke(_currentLevel);
-        CustomLevelGenerator.Instance.GenerateLevel(_currentLevel);
+        GeneratorLevel.Instance.GenerateLevel(_currentLevel);
     }
 
     public void CompleteCurrentLevel()
@@ -227,25 +227,25 @@ public class LinearLevelSystem : MonoBehaviour
 
     private void EnsureCurrentLevelIsValid()
     {
-        if (CustomLevelGenerator.Instance == null)
+        if (GeneratorLevel.Instance == null)
         {
             return;
         }
 
-        if (CustomLevelGenerator.Instance.HasLevel(_currentLevel))
+        if (GeneratorLevel.Instance.HasLevel(_currentLevel))
         {
             return;
         }
 
-        int totalLevels = CustomLevelGenerator.Instance.GetTotalLevels();
+        int totalLevels = GeneratorLevel.Instance.GetTotalLevels();
         int fallbackLevel = Mathf.Clamp(_currentLevel, _startingLevel, Mathf.Max(_startingLevel, totalLevels));
 
-        if (!CustomLevelGenerator.Instance.HasLevel(fallbackLevel))
+        if (!GeneratorLevel.Instance.HasLevel(fallbackLevel))
         {
             fallbackLevel = _startingLevel;
         }
 
-        if (!CustomLevelGenerator.Instance.HasLevel(fallbackLevel))
+        if (!GeneratorLevel.Instance.HasLevel(fallbackLevel))
         {
             Debug.LogWarning("No level data found in Resources/Levels.");
             return;

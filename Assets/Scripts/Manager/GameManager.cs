@@ -66,9 +66,9 @@ public class GameManager : MonoBehaviour
     {
         if (!_levelComplete)
         {
-            UpdateHintSystem();
+            TickHint();
             UpdateTimer();
-            CheckLoseCondition();
+            CheckLose();
         }
     }
 
@@ -86,14 +86,14 @@ public class GameManager : MonoBehaviour
         _isTimerPaused = false;
         SetTimerVisible(true);
 
-        LevelDataFromJSON levelData = CustomLevelGenerator.Instance?.GetCurrentLevelData();
+        LevelDataFromJSON levelData = GeneratorLevel.Instance?.GetCurrentLevelData();
 
         _levelTimeLimit = levelData.levelSeconds;
         _currentTime = _levelTimeLimit;
         Debug.Log($"Level time limit: {_levelTimeLimit} seconds");
 
-        UpdateTimerDisplay();
-        NotifyMergeProgressChanged();
+        RefreshTimer();
+        NotifyMerge();
     }
 
     public void OnItemsMerged(int count)
@@ -105,7 +105,7 @@ public class GameManager : MonoBehaviour
 
         _itemsMerged += count;
         _hintTimer = 0f;
-        NotifyMergeProgressChanged();
+        NotifyMerge();
         if (IsBoardCleared())
         {
             OnLevelWin();
@@ -171,7 +171,7 @@ public class GameManager : MonoBehaviour
         Debug.Log("Level Failed!");
     }
 
-    private void CheckLoseCondition()
+    private void CheckLose()
     {
         if (_levelComplete) return;
 
@@ -189,13 +189,13 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        if (allGrillsFull && !CanMakeAnyMove())
+        if (allGrillsFull && !CanMove())
         {
             OnLevelLose(LoseReason.OutOfSlot);
         }
     }
 
-    private bool CanMakeAnyMove()
+    private bool CanMove()
     {
         foreach (GrillStation grill in _grillStations)
         {
@@ -247,10 +247,10 @@ public class GameManager : MonoBehaviour
             OnLevelLose(LoseReason.TimeUp); 
         }
 
-        UpdateTimerDisplay();
+        RefreshTimer();
     }
 
-    private void UpdateTimerDisplay()
+    private void RefreshTimer()
     {
         if (_timerText == null || _levelTimeLimit <= 0) return;
 
@@ -271,18 +271,18 @@ public class GameManager : MonoBehaviour
             _timerText.color = Color.white;
         }
     }
-    private void UpdateHintSystem()
+    private void TickHint()
     {
         _hintTimer += Time.deltaTime;
 
         if (_hintTimer >= _hintCheckInterval)
         {
             _hintTimer = 0f;
-            CheckAndShowHint();
+            TryShowHint();
         }
     }
 
-    private void CheckAndShowHint()
+    private void TryShowHint()
     {
         Dictionary<string, List<FoodSlot>> foodGroups = new Dictionary<string, List<FoodSlot>>();
 
@@ -321,7 +321,7 @@ public class GameManager : MonoBehaviour
 
     public void ShowHint()
     {
-        CheckAndShowHint();
+        TryShowHint();
     }
 
     public void OnNextLevelButtonClicked()
@@ -490,7 +490,7 @@ public class GameManager : MonoBehaviour
                 int index = Random.Range(0, hiddenSlots.Count);
                 Image hidden = hiddenSlots[index];
                 hiddenSlots.RemoveAt(index);
-                PlayHiddenRemoveByBoostEffect(hidden);
+                PlayHiddenRemoveFx(hidden);
                 playedRemovalAnimation = true;
                 removedCount++;
             }
@@ -499,7 +499,7 @@ public class GameManager : MonoBehaviour
         if (removedCount > 0)
         {
             OnItemsMerged(removedCount);
-            StartCoroutine(ResolveBoostBoardState(playedRemovalAnimation));
+            StartCoroutine(ResolveBoost(playedRemovalAnimation));
             Debug.Log($"Boost RemoveThree: removed {removedCount} item(s) of type {selectedType}.");
             return true;
         }
@@ -517,7 +517,7 @@ public class GameManager : MonoBehaviour
         List<FoodSlot> visibleSlots = new List<FoodSlot>();
         List<Image> hiddenImages = new List<Image>();
         Dictionary<FoodSlot, GrillStation> slotOwnerByVisibleSlot = new Dictionary<FoodSlot, GrillStation>();
-        CollectVisibleAndHiddenItems(visibleSlots, hiddenImages, slotOwnerByVisibleSlot);
+        CollectBoardItems(visibleSlots, hiddenImages, slotOwnerByVisibleSlot);
 
         if (visibleSlots.Count == 0 || hiddenImages.Count == 0)
         {
@@ -535,7 +535,7 @@ public class GameManager : MonoBehaviour
         Dictionary<FoodSlot, Image> assignment = new Dictionary<FoodSlot, Image>(visibleSlots.Count);
         List<Image> availableHidden = new List<Image>(hiddenImages);
 
-        bool hasPreparedMerge = ReservePotentialMergeAssignment(visibleSlots, assignment, availableHidden, slotOwnerByVisibleSlot);
+        bool hasPreparedMerge = ReserveMergeSwap(visibleSlots, assignment, availableHidden, slotOwnerByVisibleSlot);
 
         if (!hasPreparedMerge)
         {
@@ -555,7 +555,7 @@ public class GameManager : MonoBehaviour
             availableHidden.RemoveAt(randomIndex);
         }
 
-        ApplyVisibleHiddenSwap(assignment);
+        ApplySwap(assignment);
 
         Debug.Log("Boost SwapForMerge: swapped all visible items and prepared merge setup.");
 
@@ -570,7 +570,7 @@ public class GameManager : MonoBehaviour
             return false;
         }
 
-        ApplyAddTimeSeconds(30f);
+        AddTime(30f);
         return true;
     }
 
@@ -589,7 +589,7 @@ public class GameManager : MonoBehaviour
         return true;
     }
 
-    private void CollectVisibleAndHiddenItems(
+    private void CollectBoardItems(
         List<FoodSlot> visibleSlots,
         List<Image> hiddenImages,
         Dictionary<FoodSlot, GrillStation> slotOwnerByVisibleSlot)
@@ -615,7 +615,7 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    private bool ReservePotentialMergeAssignment(
+    private bool ReserveMergeSwap(
         List<FoodSlot> visibleSlots,
         Dictionary<FoodSlot, Image> assignment,
         List<Image> availableHidden,
@@ -626,7 +626,7 @@ public class GameManager : MonoBehaviour
             return false;
         }
 
-        Dictionary<string, int> hiddenCountByType = BuildHiddenCountByType(availableHidden);
+        Dictionary<string, int> hiddenCountByType = CountHidden(availableHidden);
         List<string> typeCandidates = new List<string>();
         foreach (KeyValuePair<string, int> pair in hiddenCountByType)
         {
@@ -651,13 +651,13 @@ public class GameManager : MonoBehaviour
 
         foreach (string type in typeCandidates)
         {
-            List<FoodSlot> targetSlots = SelectThreeSlotsAcrossDifferentGrills(visibleSlots, assignment, slotOwnerByVisibleSlot);
+            List<FoodSlot> targetSlots = PickSplitSlots(visibleSlots, assignment, slotOwnerByVisibleSlot);
             if (targetSlots == null || targetSlots.Count < 3)
             {
                 continue;
             }
 
-            List<Image> selectedHidden = TakeHiddenByType(type, 3, availableHidden);
+            List<Image> selectedHidden = TakeHidden(type, 3, availableHidden);
             if (selectedHidden == null || selectedHidden.Count < 3)
             {
                 continue;
@@ -674,7 +674,7 @@ public class GameManager : MonoBehaviour
         return false;
     }
 
-    private List<FoodSlot> SelectThreeSlotsAcrossDifferentGrills(
+    private List<FoodSlot> PickSplitSlots(
         List<FoodSlot> visibleSlots,
         Dictionary<FoodSlot, Image> assignment,
         Dictionary<FoodSlot, GrillStation> slotOwnerByVisibleSlot)
@@ -732,7 +732,7 @@ public class GameManager : MonoBehaviour
         return null;
     }
 
-    private void ApplyVisibleHiddenSwap(Dictionary<FoodSlot, Image> assignment)
+    private void ApplySwap(Dictionary<FoodSlot, Image> assignment)
     {
         Dictionary<FoodSlot, Sprite> oldVisibleSprite = new Dictionary<FoodSlot, Sprite>();
         Dictionary<Image, Sprite> oldHiddenSprite = new Dictionary<Image, Sprite>();
@@ -768,11 +768,11 @@ public class GameManager : MonoBehaviour
             pair.Value.sprite = oldVisibleSprite[pair.Key];
             pair.Value.SetNativeSize();
             pair.Value.gameObject.SetActive(true);
-            PlayHiddenSwapByBoostEffect(pair.Value);
+            PlayHiddenSwapFx(pair.Value);
         }
     }
 
-    private void PlayHiddenSwapByBoostEffect(Image hiddenImage)
+    private void PlayHiddenSwapFx(Image hiddenImage)
     {
         if (hiddenImage == null || !hiddenImage.gameObject.activeInHierarchy)
         {
@@ -800,12 +800,14 @@ public class GameManager : MonoBehaviour
         });
     }
 
-    private void PlayHiddenRemoveByBoostEffect(Image hiddenImage)
+    private void PlayHiddenRemoveFx(Image hiddenImage)
     {
         if (hiddenImage == null || !hiddenImage.gameObject.activeInHierarchy)
         {
             return;
         }
+
+        TrayItem ownerTray = hiddenImage.GetComponentInParent<TrayItem>();
 
         Vector3 baseScale = hiddenImage.transform.localScale;
         float scaleFactor = Mathf.Max(Mathf.Abs(baseScale.x), Mathf.Abs(baseScale.y), Mathf.Abs(baseScale.z));
@@ -827,10 +829,15 @@ public class GameManager : MonoBehaviour
             hiddenImage.gameObject.SetActive(false);
             hiddenImage.transform.localScale = baseScale;
             hiddenImage.color = Color.white;
+
+            if (ownerTray != null && ownerTray.gameObject.activeInHierarchy && !ownerTray.HasAnyFood())
+            {
+                ownerTray.gameObject.SetActive(false);
+            }
         });
     }
 
-    private List<Image> TakeHiddenByType(string targetType, int count, List<Image> availableHidden)
+    private List<Image> TakeHidden(string targetType, int count, List<Image> availableHidden)
     {
         List<Image> selected = new List<Image>(count);
         for (int i = availableHidden.Count - 1; i >= 0 && selected.Count < count; i--)
@@ -848,7 +855,7 @@ public class GameManager : MonoBehaviour
         return selected;
     }
 
-    private Dictionary<string, int> BuildHiddenCountByType(List<Image> hiddenImages)
+    private Dictionary<string, int> CountHidden(List<Image> hiddenImages)
     {
         Dictionary<string, int> countByType = new Dictionary<string, int>();
         foreach (Image hidden in hiddenImages)
@@ -869,11 +876,12 @@ public class GameManager : MonoBehaviour
         return countByType;
     }
 
-    private IEnumerator ResolveBoostBoardState(bool waitForVisibleAnimation)
+    private IEnumerator ResolveBoost(bool waitForVisibleAnimation)
     {
         if (waitForVisibleAnimation)
         {
-            yield return new WaitForSeconds(0.22f);
+            // Hidden remove effect lasts about 0.32s; wait a bit longer so state is finalized.
+            yield return new WaitForSeconds(0.36f);
         }
 
         if (_levelComplete)
@@ -915,15 +923,15 @@ public class GameManager : MonoBehaviour
         _timerText.gameObject.SetActive(isVisible);
     }
 
-    private void ApplyAddTimeSeconds(float addSeconds)
+    private void AddTime(float addSeconds)
     {
         _currentTime += Mathf.Max(0f, addSeconds);
         _hintTimer = 0f;
-        UpdateTimerDisplay();
+        RefreshTimer();
         Debug.Log($"Boost AddTime: +{addSeconds:0}s. Current time: {_currentTime:0.00}s");
     }
 
-    private void NotifyMergeProgressChanged()
+    private void NotifyMerge()
     {
         OnMergeProgressChanged?.Invoke(MergeProgress, _itemsMerged, _totalItemsToMerge);
     }

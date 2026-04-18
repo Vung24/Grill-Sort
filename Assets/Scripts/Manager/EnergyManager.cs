@@ -19,10 +19,6 @@ public class EnergyManager : MonoBehaviour
 
     public static EnergyManager EnsureInstance()
     {
-        if (Instance != null)
-        {
-            return Instance;
-        }
 
         EnergyManager existing = FindObjectOfType<EnergyManager>();
         if (existing != null)
@@ -39,7 +35,6 @@ public class EnergyManager : MonoBehaviour
     {
         if (Instance != null && Instance != this)
         {
-            // Keep host GameObject if it contains other components (e.g. menu managers).
             Destroy(this);
             return;
         }

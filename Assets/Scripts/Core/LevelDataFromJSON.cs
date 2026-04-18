@@ -94,6 +94,8 @@ public class SpawnWareData
     public int numberTrayNoIce;
     public int numberHidden;
     public int maxNumberHiddenInTray;
+    public float initialMergeReadyRatio;
+    public int minMergeReadyGrills;
 }
 
 [System.Serializable]
