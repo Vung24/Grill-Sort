@@ -7,33 +7,27 @@ using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
-    public enum LoseReason
-    {
-        None = 0,
-        TimeUp = 1,
-        OutOfSlot = 2
-    }
-
     public static GameManager Instance { get; private set; }
+    private const int WinRewardCoins = 50;
 
     [Header("References")]
     [SerializeField] private Transform _gridGrill;
 
     [Header("Hint System")]
-    [SerializeField] private float _hintCheckInterval = 10f;
+    [SerializeField] private GameHintSystem _hintSystem;
 
     [Header("Timer UI")]
     [SerializeField] private TextMeshProUGUI _timerText;
 
-    [Header("Win/Lose Panels")]
+    [Header("Win/Lose/Revive Panels")]
     [SerializeField] private GameObject _winPanel;
     [SerializeField] private GameObject _losePanel;
+    [SerializeField] private GameObject _revivePanel;
     [SerializeField] private float _panelFadeDuration = 0.25f;
 
     private List<GrillStation> _grillStations;
     private int _totalItemsToMerge;
     private int _itemsMerged;
-    private float _hintTimer;
     private float _currentTime;
     private float _levelTimeLimit;
     private bool _timerStarted;
@@ -42,7 +36,8 @@ public class GameManager : MonoBehaviour
     private bool _levelWon;
     private bool _hasMovedFood;
     private bool _energyConsumedThisAttempt;
-    private LoseReason _currentLoseReason;
+    private EnumManager.LevelState _currentLevelState;
+    private EnumManager.LoseReason _currentLoseReason;
 
     public event System.Action<float, int, int> OnMergeProgressChanged;
 
@@ -50,23 +45,36 @@ public class GameManager : MonoBehaviour
     {
         Instance = this;
         _grillStations = Utils.GetListInChild<GrillStation>(_gridGrill);
+        if (_hintSystem == null)
+        {
+            _hintSystem = GetComponent<GameHintSystem>();
+        }
+        if (_hintSystem == null)
+        {
+            _hintSystem = gameObject.AddComponent<GameHintSystem>();
+        }
+        _hintSystem.Initialize(_grillStations);
         EnergyManager.EnsureInstance();
+        BoostManager.EnsureInstance();
+        CoinManager.EnsureInstance();
     }
 
     private void Start()
     {
         _levelComplete = false;
-        _currentLoseReason = LoseReason.None;
+        _currentLevelState = EnumManager.LevelState.None;
+        _currentLoseReason = EnumManager.LoseReason.None;
 
         if (_winPanel != null) _winPanel.SetActive(false);
         if (_losePanel != null) _losePanel.SetActive(false);
+        if (_revivePanel != null) _revivePanel.SetActive(false);
     }
 
     private void Update()
     {
-        if (!_levelComplete)
+        if (_currentLevelState == EnumManager.LevelState.Playing)
         {
-            TickHint();
+            _hintSystem?.TickHint();
             UpdateTimer();
             CheckLose();
         }
@@ -78,14 +86,16 @@ public class GameManager : MonoBehaviour
         _itemsMerged = 0;
         _levelComplete = false;
         _levelWon = false;
-        _currentLoseReason = LoseReason.None;
-        _hintTimer = 0f;
+        _currentLevelState = EnumManager.LevelState.Playing;
+        _currentLoseReason = EnumManager.LoseReason.None;
+        _hintSystem?.ResetHintTimer();
         _hasMovedFood = false;
         _energyConsumedThisAttempt = false;
         _timerStarted = false;
         _isTimerPaused = false;
         SetTimerVisible(true);
-
+        if (_revivePanel != null) _revivePanel.SetActive(false);
+        if (_losePanel != null) _losePanel.SetActive(false);
         LevelDataFromJSON levelData = GeneratorLevel.Instance?.GetCurrentLevelData();
 
         _levelTimeLimit = levelData.levelSeconds;
@@ -104,7 +114,7 @@ public class GameManager : MonoBehaviour
         }
 
         _itemsMerged += count;
-        _hintTimer = 0f;
+        _hintSystem?.ResetHintTimer();
         NotifyMerge();
         if (IsBoardCleared())
         {
@@ -136,15 +146,17 @@ public class GameManager : MonoBehaviour
 
         return true;
     }
-
+    #region STATE CHANGE UI
     private void OnLevelWin()
     {
         if (_levelComplete) return;
 
         _levelComplete = true;
         _levelWon = true;
+        _currentLevelState = EnumManager.LevelState.Win;
         SetTimerVisible(false);
         AudioManager.Instance?.PlayCompleteMission();
+        CoinManager.Instance?.AddCoins(WinRewardCoins);
 
         if (_winPanel != null)
         {
@@ -153,7 +165,7 @@ public class GameManager : MonoBehaviour
         LinearLevelSystem.Instance?.CompleteCurrentLevel();
     }
 
-    private void OnLevelLose(LoseReason reason)
+    private void OnLevelLose(EnumManager.LoseReason reason)
     {
         if (_levelComplete) return;
 
@@ -161,16 +173,113 @@ public class GameManager : MonoBehaviour
         _levelWon = false;
         _currentLoseReason = reason;
         SetTimerVisible(false);
-        //audio 
+        // OutOfSlot now shows revive panel first.
+        if (reason == EnumManager.LoseReason.OutOfSlot)
+        {
+            _currentLevelState = EnumManager.LevelState.RevivePanel;
+            _currentLoseReason = EnumManager.LoseReason.RevivePanel;
+            if (_revivePanel != null)
+            {
+                ShowPanel(_revivePanel);
+            }
+            return;
+        }
+
+        _currentLevelState = EnumManager.LevelState.Lose;
         if (_losePanel != null)
         {
             ShowPanel(_losePanel);
         }
-
         ConsumeEnergy();
         Debug.Log("Level Failed!");
     }
 
+    public void CloseRevivePanelAndShowLose()
+    {
+        if (_currentLoseReason != EnumManager.LoseReason.RevivePanel)
+        {
+            return;
+        }
+
+        if (_revivePanel != null)
+        {
+            _revivePanel.SetActive(false);
+        }
+
+        _currentLevelState = EnumManager.LevelState.Lose;
+        _currentLoseReason = EnumManager.LoseReason.OutOfSlot;
+        if (_losePanel != null)
+        {
+            ShowPanel(_losePanel);
+        }
+        ConsumeEnergy();
+        Debug.Log("Level Failed!");
+    }
+
+    public bool TryReviveWithSwapByCoin(int coinCost)
+    {
+        if (_currentLevelState != EnumManager.LevelState.RevivePanel)
+        {
+            return false;
+        }
+
+        if (CoinManager.Instance == null || !CoinManager.Instance.SpendCoins(coinCost))
+        {
+            return false;
+        }
+
+        bool revived = TryReviveWithSwapInternal();
+        if (!revived)
+        {
+            CoinManager.Instance.AddCoins(coinCost);
+        }
+
+        return revived;
+    }
+
+    public bool TryReviveWithSwapFree()
+    {
+        if (_currentLevelState != EnumManager.LevelState.RevivePanel)
+        {
+            return false;
+        }
+
+        return TryReviveWithSwapInternal();
+    }
+
+    private bool TryReviveWithSwapInternal()
+    {
+        if (_revivePanel != null)
+        {
+            _revivePanel.SetActive(false);
+        }
+
+        _levelComplete = false;
+        _levelWon = false;
+        _currentLevelState = EnumManager.LevelState.Playing;
+        _currentLoseReason = EnumManager.LoseReason.None;
+        SetTimerVisible(true);
+
+        bool usedSwap = BoostManager.Instance != null && BoostManager.Instance.UseSwapForMerge();
+        if (usedSwap)
+        {
+            return true;
+        }
+
+        // Swap failed: restore revive state so player can choose another action.
+        _levelComplete = true;
+        _levelWon = false;
+        _currentLevelState = EnumManager.LevelState.RevivePanel;
+        _currentLoseReason = EnumManager.LoseReason.RevivePanel;
+        SetTimerVisible(false);
+        if (_revivePanel != null)
+        {
+            ShowPanel(_revivePanel);
+        }
+
+        return false;
+    }
+    #endregion
     private void CheckLose()
     {
         if (_levelComplete) return;
@@ -191,7 +300,7 @@ public class GameManager : MonoBehaviour
 
         if (allGrillsFull && !CanMove())
         {
-            OnLevelLose(LoseReason.OutOfSlot);
+            OnLevelLose(EnumManager.LoseReason.OutOfSlot);
         }
     }
 
@@ -236,7 +345,7 @@ public class GameManager : MonoBehaviour
 
     private void UpdateTimer()
     {
-        if (_levelTimeLimit <= 0) return; 
+        if (_levelTimeLimit <= 0) return;
         if (!_timerStarted || _isTimerPaused) return;
 
         _currentTime -= Time.deltaTime;
@@ -244,7 +353,7 @@ public class GameManager : MonoBehaviour
         if (_currentTime <= 0f)
         {
             _currentTime = 0f;
-            OnLevelLose(LoseReason.TimeUp); 
+            OnLevelLose(EnumManager.LoseReason.TimeUp);
         }
 
         RefreshTimer();
@@ -271,57 +380,9 @@ public class GameManager : MonoBehaviour
             _timerText.color = Color.white;
         }
     }
-    private void TickHint()
-    {
-        _hintTimer += Time.deltaTime;
-
-        if (_hintTimer >= _hintCheckInterval)
-        {
-            _hintTimer = 0f;
-            TryShowHint();
-        }
-    }
-
-    private void TryShowHint()
-    {
-        Dictionary<string, List<FoodSlot>> foodGroups = new Dictionary<string, List<FoodSlot>>();
-
-        foreach (GrillStation grill in _grillStations)
-        {
-            if (!grill.gameObject.activeInHierarchy) continue;
-            if (grill.TrayContainer == null || !grill.TrayContainer.gameObject.activeInHierarchy) continue;
-
-            foreach (FoodSlot slot in grill.TotalSlots)
-            {
-                if (!slot.HasFood()) continue;
-
-                string foodName = slot.GetSpriteFood.name;
-
-                if (!foodGroups.ContainsKey(foodName))
-                {
-                    foodGroups[foodName] = new List<FoodSlot>();
-                }
-
-                foodGroups[foodName].Add(slot);
-            }
-        }
-
-        foreach (var group in foodGroups)
-        {
-            if (group.Value.Count >= 3)
-            {
-                for (int i = 0; i < 3; i++)
-                {
-                    group.Value[i].DoShake();
-                }
-                return;
-            }
-        }
-    }
-
     public void ShowHint()
     {
-        TryShowHint();
+        _hintSystem?.ShowHintNow();
     }
 
     public void OnNextLevelButtonClicked()
@@ -337,7 +398,8 @@ public class GameManager : MonoBehaviour
     public bool HasMovedFood => _hasMovedFood;
     public bool IsLevelComplete => _levelComplete;
     public bool IsLevelWon => _levelWon;
-    public LoseReason CurrentLoseReason => _currentLoseReason;
+    public EnumManager.LevelState CurrentLevelState => _currentLevelState;
+    public EnumManager.LoseReason CurrentLoseReason => _currentLoseReason;
     public bool IsTimerPaused => _isTimerPaused;
 
     public void MarkFoodMoved()
@@ -559,7 +621,7 @@ public class GameManager : MonoBehaviour
 
         Debug.Log("Boost SwapForMerge: swapped all visible items and prepared merge setup.");
 
-        _hintTimer = 0f;
+        _hintSystem?.ResetHintTimer();
         return true;
     }
 
@@ -926,7 +988,7 @@ public class GameManager : MonoBehaviour
     private void AddTime(float addSeconds)
     {
         _currentTime += Mathf.Max(0f, addSeconds);
-        _hintTimer = 0f;
+        _hintSystem?.ResetHintTimer();
         RefreshTimer();
         Debug.Log($"Boost AddTime: +{addSeconds:0}s. Current time: {_currentTime:0.00}s");
     }

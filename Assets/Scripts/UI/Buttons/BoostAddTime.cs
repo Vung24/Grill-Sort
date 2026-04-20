@@ -40,7 +40,7 @@ public class BoostAddTime : MonoBehaviour
             return;
         }
 
-        if (GameManager.Instance == null || !GameManager.Instance.CanUseBoostAddThirtySeconds())
+        if (BoostManager.Instance == null || !BoostManager.Instance.CanUseAddThirtySeconds())
         {
             RefreshUI();
             return;
@@ -50,7 +50,7 @@ public class BoostAddTime : MonoBehaviour
         {
             bool fxStarted = _fxPresenter.Play(() =>
             {
-                bool usedWithFx = GameManager.Instance != null && GameManager.Instance.UseBoostAddThirtySeconds();
+                bool usedWithFx = BoostManager.Instance != null && BoostManager.Instance.UseAddThirtySeconds();
                 if (usedWithFx && !IsUnlimited())
                 {
                     SetCount(GetCount() - 1);
@@ -68,7 +68,7 @@ public class BoostAddTime : MonoBehaviour
             return;
         }
 
-        bool usedSuccessfully = GameManager.Instance.UseBoostAddThirtySeconds();
+        bool usedSuccessfully = BoostManager.Instance.UseAddThirtySeconds();
         if (usedSuccessfully && !IsUnlimited())
         {
             SetCount(currentCount - 1);

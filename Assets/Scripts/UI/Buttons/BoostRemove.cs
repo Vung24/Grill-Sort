@@ -39,7 +39,7 @@ public class BoostRemove : MonoBehaviour
             return;
         }
 
-        bool usedSuccessfully = GameManager.Instance != null && GameManager.Instance.UseBoostRemoveThree();
+        bool usedSuccessfully = BoostManager.Instance != null && BoostManager.Instance.UseRemoveThree();
         if (usedSuccessfully && !isUnlimited)
         {
             SetCount(currentCount - 1);

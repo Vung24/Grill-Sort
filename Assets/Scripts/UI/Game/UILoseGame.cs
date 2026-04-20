@@ -43,7 +43,7 @@ public class UILoseGame : MonoBehaviour
         }
 
         bool isTimeUp = GameManager.Instance != null
-            && GameManager.Instance.CurrentLoseReason == GameManager.LoseReason.TimeUp;
+            && GameManager.Instance.CurrentLoseReason == EnumManager.LoseReason.TimeUp;
         _loseReasonText.text = isTimeUp ? _timeUpMessage : _outOfSlotMessage;
     }
 }

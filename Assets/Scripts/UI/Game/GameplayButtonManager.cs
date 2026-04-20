@@ -57,6 +57,16 @@ public class GameplayButtonManager : MonoBehaviour
         _settings?.LoadPlayAgainGame();
     }
 
+    public void SettingsRestartConfirm()
+    {
+        _settings?.ConfirmPlayAgainFromRestartPanel();
+    }
+
+    public void SettingsRestartClose()
+    {
+        _settings?.CloseRestartPanel();
+    }
+
     public void WinMenu()
     {
         _winGame?.LoadMenu();
@@ -75,6 +85,22 @@ public class GameplayButtonManager : MonoBehaviour
     public void LosePlayAgain()
     {
         _loseGame?.LoadPlayAgainGame();
+    }
+
+    public void ReviveClose()
+    {
+        GameManager.Instance?.CloseRevivePanelAndShowLose();
+    }
+
+    public void ReviveBuyShuffleByCoin()
+    {
+        // Default revive shuffle cost used by revive panel.
+        GameManager.Instance?.TryReviveWithSwapByCoin(450);
+    }
+
+    public void ReviveFreeShuffle()
+    {
+        GameManager.Instance?.TryReviveWithSwapFree();
     }
 
     public void BoostRemoveThree()

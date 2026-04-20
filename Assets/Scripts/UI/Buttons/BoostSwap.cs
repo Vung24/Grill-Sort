@@ -39,7 +39,7 @@ public class BoostSwap : MonoBehaviour
             return;
         }
 
-        bool usedSuccessfully = GameManager.Instance != null && GameManager.Instance.UseBoostSwapForMerge();
+        bool usedSuccessfully = BoostManager.Instance != null && BoostManager.Instance.UseSwapForMerge();
         if (usedSuccessfully && !isUnlimited)
         {
             SetCount(currentCount - 1);

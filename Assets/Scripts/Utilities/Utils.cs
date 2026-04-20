@@ -32,10 +32,16 @@ public class Utils : MonoBehaviour
     }
     public static T GetRayCastUI<T>(Vector2 position) where T : MonoBehaviour //lay component UI tu vi tri chon
     {
-        PointerEventData pointerEventData = new PointerEventData(EventSystem.current); //tao su kien pointer
+        EventSystem eventSystem = EventSystem.current;
+        if (eventSystem == null)
+        {
+            return null;
+        }
+
+        PointerEventData pointerEventData = new PointerEventData(eventSystem); //tao su kien pointer
         pointerEventData.position = position; //dat vi tri su kien
         List<RaycastResult> list = new List<RaycastResult>(); //tao danh sach ket qua raycast
-        EventSystem.current.RaycastAll(pointerEventData, list); //thuc hien raycast
+        eventSystem.RaycastAll(pointerEventData, list); //thuc hien raycast
         if (list.Count > 0)
         {
             for (int i = 0; i < list.Count; i++) //duyet qua ket qua raycast

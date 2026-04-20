@@ -6,7 +6,6 @@ public class MergeProgressUI : MonoBehaviour
 {
     [Header("UI")]
     [SerializeField] private Image _progressFill;
-    [SerializeField] private Slider _progressSlider;
     [SerializeField] private TextMeshProUGUI _percentText;
 
     private GameManager _boundManager;
@@ -76,13 +75,6 @@ public class MergeProgressUI : MonoBehaviour
         if (_progressFill != null)
         {
             _progressFill.fillAmount = normalized;
-        }
-
-        if (_progressSlider != null)
-        {
-            _progressSlider.minValue = 0f;
-            _progressSlider.maxValue = 1f;
-            _progressSlider.value = normalized;
         }
 
         if (_percentText != null)

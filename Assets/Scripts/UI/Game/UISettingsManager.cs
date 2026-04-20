@@ -8,8 +8,9 @@ public class UISettingsManager : MonoBehaviour
 {
     [Header("Button")]
     [SerializeField] private Button settingButton, Menu, playAgain, _btnClose;
-    [Header("Gameobject")]
+    [Header("Panel")]
     [SerializeField] private GameObject settingPanel;
+    [SerializeField] private GameObject _restartPanel;
     [SerializeField] private TextMeshProUGUI _levelText;
     private bool isOpen = false;
 
@@ -17,6 +18,10 @@ public class UISettingsManager : MonoBehaviour
     {
         settingPanel.transform.localScale = Vector3.zero;
         settingPanel.SetActive(false);
+        if (_restartPanel != null)
+        {
+            _restartPanel.SetActive(false);
+        }
         UpdateLevel();
     }
 
@@ -43,6 +48,10 @@ public class UISettingsManager : MonoBehaviour
         GameManager.Instance?.SetTimerPaused(false);
         settingPanel.transform.DOScale(Vector3.zero, 0.25f).SetEase(Ease.InBack)
             .OnComplete(() => settingPanel.SetActive(false));
+        if (_restartPanel != null)
+        {
+            _restartPanel.SetActive(false);
+        }
     }
 
     private void OnDisable()
@@ -58,12 +67,41 @@ public class UISettingsManager : MonoBehaviour
 
     public void LoadPlayAgainGame()
     {
+        // First tap from settings only opens restart confirmation panel.
+        if (_restartPanel == null)
+        {
+            ConfirmPlayAgainFromRestartPanel();
+            return;
+        }
+
+        settingPanel.SetActive(false);
+        _restartPanel.SetActive(true);
+    }
+
+    public void ConfirmPlayAgainFromRestartPanel()
+    {
         if (EnergyManager.Instance != null && !EnergyManager.Instance.CanPlay())
         {
             return;
         }
+
+        if (_restartPanel != null)
+        {
+            _restartPanel.SetActive(false);
+        }
+
         GameManager.Instance?.ConsumeEnergyIfAbandon();
         LinearLevelSystem.EnsureInstance().RestartLevel();
+    }
+
+    public void CloseRestartPanel()
+    {
+        if (_restartPanel != null)
+        {
+            _restartPanel.SetActive(false);
+        }
+
+        settingPanel.SetActive(true);
     }
     public void UpdateLevel()
     {
