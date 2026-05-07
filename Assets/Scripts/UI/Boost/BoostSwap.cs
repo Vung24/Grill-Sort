@@ -80,6 +80,13 @@ public class BoostSwap : MonoBehaviour
         RefreshUI();
     }
 
+    public void SetBoostAmount(int amount)
+    {
+        SetUnlimited(false);
+        SetCount(amount);
+        RefreshUI();
+    }
+
     public void ResetBoostToDefault()
     {
         SetUnlimited(false);

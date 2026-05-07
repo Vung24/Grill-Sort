@@ -401,6 +401,7 @@ public class BoostGameplayController : MonoBehaviour
             pair.Value.SetNativeSize();
             pair.Value.gameObject.SetActive(true);
             _boostFxController?.PlayHiddenSwapFx(pair.Value);
+            AudioManager.Instance?.PlaySwap();
         }
     }
 

@@ -69,21 +69,6 @@ public class Menu : MonoBehaviour
             LinearLevelSystem.EnsureInstance().ContinueGame();
         });
     }
-    public void OnQuitClicked()
-    {
-        AnimateButtonClick(_quitButton, () =>
-        {
-            QuitGame();
-        });
-    }
-    public void QuitGame()
-    {
-#if UNITY_EDITOR
-        UnityEditor.EditorApplication.isPlaying = false;
-#else
-            Application.Quit();
-#endif
-    }
     private void AnimateEntry()
     {
         if (_playButton != null)
@@ -131,5 +116,20 @@ public class Menu : MonoBehaviour
         }
 
         _playButton.interactable = EnergyManager.Instance.CanPlay();
+    }
+        public void OnQuitClicked()
+    {
+        AnimateButtonClick(_quitButton, () =>
+        {
+            QuitGame();
+        });
+    }
+    public void QuitGame()
+    {
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
     }
 }

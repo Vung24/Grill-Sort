@@ -17,4 +17,10 @@ public static class EnumManager
         OutOfSlot = 2,
         RevivePanel = 3
     }
+    // public enum BoostType
+    // {
+    //     Remove,
+    //     Swap,
+    //     AddTime
+    // }
 }

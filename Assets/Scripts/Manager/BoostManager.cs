@@ -30,9 +30,9 @@ public class BoostManager : MonoBehaviour
     }
     private void Start()
     {
-        _boostRemove.ResetBoostToDefault();
-        _boostSwap.ResetBoostToDefault();
-        _boostAddTime.ResetBoostToDefault();
+        // _boostRemove.ResetBoostToDefault();
+        // _boostSwap.ResetBoostToDefault();
+        // _boostAddTime.ResetBoostToDefault();
         // // _boostRemove.EnableUnlimitedUse();
         // // _boostSwap.EnableUnlimitedUse();
         // _boostAddTime?.EnableUnlimitedUse();
@@ -63,6 +63,18 @@ public class BoostManager : MonoBehaviour
         GameObject host = new GameObject("BoostManager");
         Instance = host.AddComponent<BoostManager>();
         return Instance;
+    }
+
+    public void SetAllBoostAmounts(int removeCount, int swapCount, int addTimeCount)
+    {
+        PlayerPrefs.SetInt("Boost_RemoveThree_Count", Mathf.Max(0, removeCount));
+        PlayerPrefs.SetInt("Boost_SwapForMerge_Count", Mathf.Max(0, swapCount));
+        PlayerPrefs.SetInt("Boost_AddTime30_Count", Mathf.Max(0, addTimeCount));
+        PlayerPrefs.Save();
+
+        if (_boostRemove != null) _boostRemove.SetBoostAmount(removeCount);
+        if (_boostSwap != null) _boostSwap.SetBoostAmount(swapCount);
+        if (_boostAddTime != null) _boostAddTime.SetBoostAmount(addTimeCount);
     }
 
     public bool UseRemoveThree()

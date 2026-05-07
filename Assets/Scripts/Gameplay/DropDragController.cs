@@ -14,13 +14,24 @@ public class DropDragController : MonoBehaviour
     private float _countTime;
     void Update()
     {
+        HandleHintTimer();
+        HandlePointerDown();
+        HandleDrag();
+        HandlePointerUp();
+    }
+
+    private void HandleHintTimer()
+    {
         _countTime += Time.deltaTime;
         if (_countTime >= _timeCheckSuggest) // kiem tra goi y thuc an sau mot khoang thoi gian
         {
             _countTime = 0f;
             GameManager.Instance?.ShowHint();
         }
+    }
 
+    private void HandlePointerDown()
+    {
         if (Input.GetMouseButtonDown(0)) 
         {
             _currentFood = Utillities.GetRayCastUI<FoodSlot>(Input.mousePosition);
@@ -36,9 +47,14 @@ public class DropDragController : MonoBehaviour
                 Vector3 mouseWordPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
                 _offset = mouseWordPos - _currentFood.transform.position;
                 _currentFood.OnActiveFood(false); 
+                
+                AudioManager.Instance?.PlayPickUpFood();
             }
         }
+    }
 
+    private void HandleDrag()
+    {
         if (_hasDrag) 
         {
             Vector3 mouseWordPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
@@ -83,7 +99,10 @@ public class DropDragController : MonoBehaviour
                 }
             }
         }
+    }
 
+    private void HandlePointerUp()
+    {
         if (Input.GetMouseButtonUp(0) && _hasDrag)
         {
             if (_cacheFood != null) 
@@ -125,6 +144,7 @@ public class DropDragController : MonoBehaviour
             _hasDrag = false;
         }
     }
+
     public void OnClearCacheSlot()
     {
         if (_cacheFood != null && _cacheFood.GetInstanceID() != _currentFood.GetInstanceID())

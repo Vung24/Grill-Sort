@@ -99,7 +99,7 @@ public class GeneratorLevel : MonoBehaviour
         }
 
         DistToGrills(data, foodPool, activeIds);
-        DisableGrill(activeIds);
+        DisableGrill(activeIds, gridCount);
         if (GameManager.Instance != null)
         {
             GameManager.Instance.OnLevelGenerated(itemCount);
@@ -276,18 +276,26 @@ public class GeneratorLevel : MonoBehaviour
 
         return result;
     }
-    public void DisableGrill(List<int> activeGrillIndices)
+    public void DisableGrill(List<int> activeGrillIndices, int totalGrillsInJson)
     {
         for (int i = 0; i < _grillStations.Count; i++)
         {
             if (!activeGrillIndices.Contains(i))
             {
-                Image img = _grillStations[i].GetComponentInChildren<Image>();
-                if (img != null)
+                if (i < totalGrillsInJson)
                 {
-                    img.sprite = _disAbleSprite;
+                    _grillStations[i].gameObject.SetActive(true);
+                    Image img = _grillStations[i].GetComponentInChildren<Image>();
+                    if (img != null)
+                    {
+                        img.sprite = _disAbleSprite;
+                    }
+                    _grillStations[i].TrayContainer.gameObject.SetActive(false);
                 }
-                _grillStations[i].TrayContainer.gameObject.SetActive(false);
+                else
+                {
+                    _grillStations[i].gameObject.SetActive(false);
+                }
             }
         }
     }

@@ -106,7 +106,7 @@ public class LinearLevelSystem : MonoBehaviour
             return;
         }
 
-        // ResetProgress();
+        ResetProgress();
         LoadProgress();
         _hasLoadedProgress = true;
     }
@@ -116,7 +116,6 @@ public class LinearLevelSystem : MonoBehaviour
         PlayerPrefs.SetInt("CurrentLevel", _currentLevel);
         PlayerPrefs.SetInt("HighestLevel", _highestLevel);
         PlayerPrefs.Save();
-        Debug.Log($"Saved - Current: {_currentLevel}, Highest: {_highestLevel}");
     }
 
     public void ResetProgress()
@@ -124,6 +123,28 @@ public class LinearLevelSystem : MonoBehaviour
         _currentLevel = _startingLevel;
         _highestLevel = _startingLevel;
         SaveProgress();
+
+        if (CoinManager.Instance != null)
+        {
+            CoinManager.Instance.SetCoins(200);
+        }
+        else
+        {
+            PlayerPrefs.SetInt("Currency_Coin", 200);
+            PlayerPrefs.Save();
+        }
+
+        if (BoostManager.Instance != null)
+        {
+            BoostManager.Instance.SetAllBoostAmounts(3, 2, 1);
+        }
+        else
+        {
+            PlayerPrefs.SetInt("Boost_RemoveThree_Count", 3);
+            PlayerPrefs.SetInt("Boost_SwapForMerge_Count", 2);
+            PlayerPrefs.SetInt("Boost_AddTime30_Count", 1);
+            PlayerPrefs.Save();
+        }
     }
 
     public void StartCurrentLevel()

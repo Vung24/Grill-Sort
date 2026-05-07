@@ -7,10 +7,11 @@ public class HomeMenu : MonoBehaviour
 {
     [SerializeField] private GameObject homePanel;
     [SerializeField] private GameObject shopPanel;
+    [SerializeField] private GameObject coin;
 
     [Header("Tab Buttons")]
-    [SerializeField] private Button homeButton;
-    [SerializeField] private Button shopButton;
+    [SerializeField] private ButtonEffectLogic homeButton;
+    [SerializeField] private ButtonEffectLogic shopButton;
 
     [Header("Slider")]
     [SerializeField] private RectTransform slide;
@@ -21,7 +22,7 @@ public class HomeMenu : MonoBehaviour
     [SerializeField] private float scaleDuration = 0.2f;
     [SerializeField] private string visualRootName = "Render";
 
-    private Button[] _buttons;
+    private ButtonEffectLogic[] _buttons;
     private GameObject[] _panels;
     private UnityAction[] _buttonCallbacks;
     private Transform[] _scaleTargets;
@@ -90,6 +91,16 @@ public class HomeMenu : MonoBehaviour
         {
             if (_panels[i] == null) continue;
             _panels[i].SetActive(i == _currentIndex);
+        }
+
+        // Active Gameobject Coin thông qua hàm ShowCoin()
+        if (CoinController.Instance != null)
+        {
+            CoinController.Instance.ShowCoin();
+        }
+        else if (coin != null)
+        {
+            coin.SetActive(true);
         }
 
         if (resizeWithButton)

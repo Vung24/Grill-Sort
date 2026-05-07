@@ -10,6 +10,7 @@ public class GameManager : MonoBehaviour
     [Header("References")]
     [SerializeField] private Transform _gridGrill;
     public BoostManager _boostManager;
+    [SerializeField] private Combo _comboSystem;
 
     [Header("Hint System")]
     [SerializeField] private GameHintSystem _hintSystem;
@@ -33,6 +34,12 @@ public class GameManager : MonoBehaviour
     {
         Instance = this;
         _grillStations = Utillities.GetListInChild<GrillStation>(_gridGrill);
+        
+        if (_comboSystem == null)
+        {
+            _comboSystem = FindObjectOfType<Combo>();
+        }
+
         if (_hintSystem == null)
         {
             _hintSystem = GetComponent<GameHintSystem>();
@@ -40,30 +47,6 @@ public class GameManager : MonoBehaviour
         if (_hintSystem == null)
         {
             _hintSystem = gameObject.AddComponent<GameHintSystem>();
-        }
-        if (_reviveController == null)
-        {
-            _reviveController = GetComponent<ReviveController>();
-        }
-        if (_reviveController == null)
-        {
-            _reviveController = gameObject.AddComponent<ReviveController>();
-        }
-        if (_rewardController == null)
-        {
-            _rewardController = GetComponent<RewardController>();
-        }
-        if (_rewardController == null)
-        {
-            _rewardController = gameObject.AddComponent<RewardController>();
-        }
-        if (_conditionController == null)
-        {
-            _conditionController = GetComponent<GameplayConditionController>();
-        }
-        if (_conditionController == null)
-        {
-            _conditionController = gameObject.AddComponent<GameplayConditionController>();
         }
         _hintSystem.Initialize(_grillStations);
         EnergyManager.EnsureInstance();
@@ -136,6 +119,12 @@ public class GameManager : MonoBehaviour
 
         _itemsMerged += count;
         _hintSystem?.ResetHintTimer();
+        
+        if (_comboSystem != null)
+        {
+            _comboSystem.AddCombo();
+        }
+
         NotifyMerge();
         _conditionController?.CheckWinCondition();
     }

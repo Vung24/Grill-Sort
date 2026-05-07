@@ -62,6 +62,7 @@ public class UIManager : MonoBehaviour
     public void ShowLosePopup()
     {
         ShowPanel(_losePopup);
+        if (CoinController.Instance != null) CoinController.Instance.ShowCoin();
     }
 
     public void ShowRevivePopup()
@@ -77,6 +78,7 @@ public class UIManager : MonoBehaviour
     public void ShowRewardPopup()
     {
         ShowPanel(_rewardPopup);
+        if (CoinController.Instance != null) CoinController.Instance.ShowCoin();
     }
 
     public void HideRewardPopup()

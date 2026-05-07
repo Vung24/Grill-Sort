@@ -46,6 +46,13 @@ public class CoinManager : MonoBehaviour
         return amount <= 0 || _coins >= amount;
     }
 
+    public void SetCoins(int amount)
+    {
+        _coins = Mathf.Max(0, amount);
+        Save();
+        OnCoinChanged?.Invoke(_coins);
+    }
+
     public void AddCoins(int amount)
     {
         if (amount <= 0)
