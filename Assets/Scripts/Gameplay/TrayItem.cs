@@ -10,7 +10,7 @@ public class TrayItem : MonoBehaviour
 
     void Awake()
     {
-        _foodList = Utils.GetListInChild<Image>(this.transform);
+        _foodList = Utillities.GetListInChild<Image>(this.transform);
         for(int i =0 ; i< _foodList.Count; i++)
         {
             _foodList[i].gameObject.SetActive(false);

@@ -31,7 +31,7 @@ public class GeneratorLevel : MonoBehaviour
         Instance = this;
 
         LoadResources();
-        _grillStations = Utils.GetListInChild<GrillStation>(_gridGrill);
+        _grillStations = Utillities.GetListInChild<GrillStation>(_gridGrill);
     }
 
     private void LoadResources()

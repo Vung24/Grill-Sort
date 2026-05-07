@@ -18,8 +18,8 @@ public class GrillStation : MonoBehaviour
     public Transform SlotContainer => _slotContainer;
     private void Awake()
     {
-        _totalTrays = Utils.GetListInChild<TrayItem>(_trayContainer);
-        _totalSlots = Utils.GetListInChild<FoodSlot>(_slotContainer);
+        _totalTrays = Utillities.GetListInChild<TrayItem>(_trayContainer);
+        _totalSlots = Utillities.GetListInChild<FoodSlot>(_slotContainer);
     }
     public void OnInitGrill(int totalTray, List<Sprite> listFood, bool spawnMergeReady = false)
     {
@@ -27,7 +27,7 @@ public class GrillStation : MonoBehaviour
         if (!hasPreparedMergeReady)
         {
             int foodCount = Random.Range(1, _totalSlots.Count + 1);
-            List<Sprite> listSlot = Utils.TakeAndRemoveRandom<Sprite>(listFood, foodCount);
+            List<Sprite> listSlot = Utillities.TakeAndRemoveRandom<Sprite>(listFood, foodCount);
             for (int i = 0; i < listSlot.Count; i++)
             {
                 FoodSlot slot = this.RandomSlot();

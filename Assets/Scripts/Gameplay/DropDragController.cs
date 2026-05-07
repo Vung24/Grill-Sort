@@ -23,7 +23,7 @@ public class DropDragController : MonoBehaviour
 
         if (Input.GetMouseButtonDown(0)) 
         {
-            _currentFood = Utils.GetRayCastUI<FoodSlot>(Input.mousePosition);
+            _currentFood = Utillities.GetRayCastUI<FoodSlot>(Input.mousePosition);
             if (_currentFood != null && _currentFood.HasFood())
             {
                 _hasDrag = true;
@@ -47,7 +47,7 @@ public class DropDragController : MonoBehaviour
             _imgFoodDrag.transform.position = foodPos; 
             _countTime = 0f;
 
-            FoodSlot slot = Utils.GetRayCastUI<FoodSlot>(Input.mousePosition);
+            FoodSlot slot = Utillities.GetRayCastUI<FoodSlot>(Input.mousePosition);
             if (slot != null && slot.IsGrillActive)
             {
                 if (!slot.HasFood()) 

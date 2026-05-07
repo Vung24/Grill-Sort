@@ -6,7 +6,8 @@ public static class EnumManager
         Playing = 1,
         RevivePanel = 2,
         Lose = 3,
-        Win = 4
+        RewardPanel = 4,
+        Win = 5
     }
 
     public enum LoseReason

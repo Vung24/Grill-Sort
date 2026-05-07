@@ -1,6 +1,6 @@
-using System.Collections;
 using DG.Tweening;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 
 public class HomeMenu : MonoBehaviour
@@ -12,137 +12,213 @@ public class HomeMenu : MonoBehaviour
     [SerializeField] private Button homeButton;
     [SerializeField] private Button shopButton;
 
-    [Header("Selection Fx")]
-    [SerializeField] private float scaleDuration = 0.16f;
-    [SerializeField] private float selectedTargetY = 100f;  // ← Absolute Y khi selected
-    [SerializeField] private float selectedScale = 1.1f;
-    [SerializeField] private float unselectedScale = 1f;
-    [SerializeField] private float unselectedAlpha = 0.6f;
+    [Header("Slider")]
+    [SerializeField] private RectTransform slide;
+    [SerializeField] private int defaultIndex = 0;
+    [SerializeField] private bool resizeWithButton = true;
+    [SerializeField] private float selectedScale = 1.2f;
+    [SerializeField] private float moveDuration = 0.25f;
+    [SerializeField] private float scaleDuration = 0.2f;
+    [SerializeField] private string visualRootName = "Render";
 
-    private enum TabType { Home, Shop }
-
-    private TabType _currentTab = TabType.Home;
-    private RectTransform _homeRect;
-    private RectTransform _shopRect;
-    private Vector2 _homeBasePos;
-    private Vector2 _shopBasePos;
-    private Vector3 _homeBaseLocalPos;
-    private Vector3 _shopBaseLocalPos;
-
-    private CanvasGroup _homeCanvasGroup;
-    private CanvasGroup _shopCanvasGroup;
-
-    // --- FIX: flag tránh race condition OnEnable vs Start ---
-    private bool _initialized;
-    private TabType _pendingTab;
+    private Button[] _buttons;
+    private GameObject[] _panels;
+    private UnityAction[] _buttonCallbacks;
+    private Transform[] _scaleTargets;
+    private Vector3[] _baseScales;
+    private int _currentIndex;
+    private Tween _moveTween;
 
     private void Awake()
     {
-        _homeRect = homeButton != null ? homeButton.GetComponent<RectTransform>() : null;
-        _shopRect = shopButton != null ? shopButton.GetComponent<RectTransform>() : null;
+        _buttons = new[] { homeButton, shopButton };
+        _panels = new[] { homePanel, shopPanel };
 
-        _homeCanvasGroup = GetOrCreateCanvasGroup(homeButton);
-        _shopCanvasGroup = GetOrCreateCanvasGroup(shopButton);
-    }
+        _buttonCallbacks = new UnityAction[_buttons.Length];
+        _scaleTargets = new Transform[_buttons.Length];
+        _baseScales = new Vector3[_buttons.Length];
 
-    private CanvasGroup GetOrCreateCanvasGroup(Button btn)
-    {
-        if (btn == null) return null;
-        CanvasGroup cg = btn.GetComponent<CanvasGroup>();
-        if (cg == null) cg = btn.gameObject.AddComponent<CanvasGroup>();
-        return cg;
-    }
-
-    private IEnumerator Start()
-    {
-        // Chờ Canvas layout xong hoàn toàn mới đọc rect.size
-        yield return new WaitForEndOfFrame();
-
-        if (_homeRect != null)
+        for (int i = 0; i < _buttons.Length; i++)
         {
-            _homeBasePos = _homeRect.anchoredPosition;
-            _homeBaseLocalPos = _homeRect.localPosition;
+            _scaleTargets[i] = ResolveScaleTarget(_buttons[i]);
+            _baseScales[i] = _scaleTargets[i] != null ? _scaleTargets[i].localScale : Vector3.one;
         }
-
-        if (_shopRect != null)
-        {
-            _shopBasePos = _shopRect.anchoredPosition;
-            _shopBaseLocalPos = _shopRect.localPosition;
-        }
-
-        _initialized = true;
-        SetTab(_pendingTab, false);
     }
 
     private void OnEnable()
     {
-        _pendingTab = (shopPanel != null && shopPanel.activeSelf) ? TabType.Shop : TabType.Home;
-
-        if (!_initialized) return; 
-
-        SetTab(_pendingTab, false);
+        BindButtons();
+        Select(GetInitialIndex(), true);
     }
 
     private void OnDisable()
     {
-        KillTweens();
+        UnbindButtons();
+        _moveTween?.Kill();
+
+        for (int i = 0; i < _buttons.Length; i++)
+        {
+            Transform scaleTarget = GetScaleTarget(i);
+            if (scaleTarget == null) continue;
+
+            scaleTarget.DOKill();
+            if (_baseScales != null && i < _baseScales.Length)
+            {
+                scaleTarget.localScale = _baseScales[i];
+            }
+        }
     }
 
-    public void OnClickHome() => SetTab(TabType.Home, true);
-    public void OnClickShop() => SetTab(TabType.Shop, true);
+    public void OnClickHome() => Select(0);
+    public void OnClickShop() => Select(1);
 
-    private void SetTab(TabType tab, bool animate)
+    public void Select(int index, bool instant = false)
     {
-        _currentTab = tab;
-        bool isHome = tab == TabType.Home;
-
-        if (homePanel != null) homePanel.SetActive(isHome);
-        if (shopPanel != null) shopPanel.SetActive(!isHome);
-
-        RectTransform selectedRect = isHome ? _homeRect : _shopRect;
-        RectTransform unselectedRect = isHome ? _shopRect : _homeRect;
-        CanvasGroup selectedCard = isHome ? _homeCanvasGroup : _shopCanvasGroup;
-        CanvasGroup unselectedCard = isHome ? _shopCanvasGroup : _homeCanvasGroup;
-
-        if (selectedRect == null) return;
-
-        KillTweens();
-
-        if (_homeRect != null) _homeRect.localPosition = _homeBaseLocalPos;
-        if (_shopRect != null) _shopRect.localPosition = _shopBaseLocalPos;
-
-        selectedRect.localScale = Vector3.one * unselectedScale;
-        if (unselectedRect != null) unselectedRect.localScale = Vector3.one * unselectedScale;
-
-        if (unselectedCard != null) unselectedCard.alpha = unselectedAlpha;
-
-        Vector2 selectedBasePos = isHome ? _homeBasePos : _shopBasePos;
-        Vector3 selectedBaseLocalPos = isHome ? _homeBaseLocalPos : _shopBaseLocalPos;
-        Vector3 selectedLiftedLocalPos = new Vector3(
-            selectedBaseLocalPos.x,
-            selectedTargetY,      
-            selectedBaseLocalPos.z
-        );
-
-        if (!animate)
+        if (slide == null || _buttons == null || _buttons.Length == 0)
         {
-            selectedRect.localScale = Vector3.one * selectedScale;
-            selectedRect.localPosition = selectedLiftedLocalPos;
-            if (selectedCard != null) selectedCard.alpha = 1f;
             return;
         }
 
-        Sequence selectedSeq = DOTween.Sequence();
-        selectedSeq.Append(selectedRect.DOScale(Vector3.one * selectedScale, scaleDuration).SetEase(Ease.OutBack));
-        selectedSeq.Join(selectedRect.DOLocalMove(selectedLiftedLocalPos, scaleDuration).SetEase(Ease.OutBack));
-        if (selectedCard != null) selectedSeq.Join(selectedCard.DOFade(1f, scaleDuration).SetEase(Ease.InOutSine));
+        _currentIndex = Mathf.Clamp(index, 0, _buttons.Length - 1);
+        RectTransform targetRect = GetTargetRect(_currentIndex);
+        if (targetRect == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < _panels.Length; i++)
+        {
+            if (_panels[i] == null) continue;
+            _panels[i].SetActive(i == _currentIndex);
+        }
+
+        if (resizeWithButton)
+        {
+            slide.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, targetRect.rect.width);
+        }
+
+        float targetX = targetRect.anchoredPosition.x;
+        _moveTween?.Kill();
+
+        if (instant)
+        {
+            slide.anchoredPosition = new Vector2(targetX, slide.anchoredPosition.y);
+        }
+        else
+        {
+            _moveTween = slide.DOAnchorPosX(targetX, moveDuration).SetEase(Ease.OutCubic);
+        }
+
+        UpdateButtonScales(instant);
     }
 
-    private void KillTweens()
+    private void UpdateButtonScales(bool instant)
     {
-        _homeRect?.DOKill();
-        _shopRect?.DOKill();
-        _homeCanvasGroup?.DOKill();
-        _shopCanvasGroup?.DOKill();
+        if (_buttons == null || _baseScales == null) return;
+
+        for (int i = 0; i < _buttons.Length; i++)
+        {
+            Transform scaleTarget = GetScaleTarget(i);
+            if (scaleTarget == null || i >= _baseScales.Length) continue;
+
+            scaleTarget.DOKill();
+
+            bool isSelected = i == _currentIndex;
+            Vector3 targetScale = isSelected ? _baseScales[i] * selectedScale : _baseScales[i];
+
+            if (instant)
+            {
+                scaleTarget.localScale = targetScale;
+            }
+            else
+            {
+                scaleTarget.DOScale(targetScale, scaleDuration).SetEase(Ease.OutCubic);
+            }
+        }
+    }
+
+    private int GetInitialIndex()
+    {
+        if (shopPanel != null && shopPanel.activeSelf)
+        {
+            return 1;
+        }
+
+        return Mathf.Clamp(defaultIndex, 0, _buttons.Length - 1);
+    }
+
+    private Transform GetScaleTarget(int index)
+    {
+        if (_scaleTargets == null || index < 0 || index >= _scaleTargets.Length)
+        {
+            return null;
+        }
+
+        return _scaleTargets[index];
+    }
+
+    private Transform ResolveScaleTarget(Button button)
+    {
+        if (button == null)
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrEmpty(visualRootName))
+        {
+            Transform namedChild = button.transform.Find(visualRootName);
+            if (namedChild != null)
+            {
+                return namedChild;
+            }
+        }
+
+        if (button.transform.childCount > 0)
+        {
+            return button.transform.GetChild(0);
+        }
+
+        return button.transform;
+    }
+
+    private RectTransform GetTargetRect(int index)
+    {
+        if (_buttons == null || index < 0 || index >= _buttons.Length)
+        {
+            return null;
+        }
+
+        Button button = _buttons[index];
+        if (button == null)
+        {
+            return null;
+        }
+
+        return button.transform as RectTransform;
+    }
+
+    private void BindButtons()
+    {
+        if (_buttons == null) return;
+
+        for (int i = 0; i < _buttons.Length; i++)
+        {
+            if (_buttons[i] == null) continue;
+
+            int index = i;
+            _buttonCallbacks[i] = () => Select(index);
+            _buttons[i].onClick.AddListener(_buttonCallbacks[i]);
+        }
+    }
+
+    private void UnbindButtons()
+    {
+        if (_buttons == null || _buttonCallbacks == null) return;
+
+        for (int i = 0; i < _buttons.Length; i++)
+        {
+            if (_buttons[i] == null || _buttonCallbacks[i] == null) continue;
+            _buttons[i].onClick.RemoveListener(_buttonCallbacks[i]);
+        }
     }
 }
