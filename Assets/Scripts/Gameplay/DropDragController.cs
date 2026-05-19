@@ -23,7 +23,7 @@ public class DropDragController : MonoBehaviour
     private void HandleHintTimer()
     {
         _countTime += Time.deltaTime;
-        if (_countTime >= _timeCheckSuggest) // kiem tra goi y thuc an sau mot khoang thoi gian
+        if (_countTime >= _timeCheckSuggest) 
         {
             _countTime = 0f;
             GameManager.Instance?.ShowHint();

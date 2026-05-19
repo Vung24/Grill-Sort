@@ -9,17 +9,36 @@ public class MenuButtonManager : MonoBehaviour
 
     public void MenuPlay()
     {
-        _menu?.OnPlayClicked();
+        if (_menu != null)
+        {
+            _menu.OnPlayClicked();
+            return;
+        }
+
+        LinearLevelSystem.EnsureInstance().ContinueGame();
     }
 
     public void MenuQuit()
     {
-        _menu?.OnQuitClicked();
+        if (_menu != null)
+        {
+            _menu.OnQuitClicked();
+            return;
+        }
+
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
     }
 
     public void SettingsToggle()
     {
-        _settings?.ToggleSettings();
+        if (_settings != null)
+        {
+            _settings.ToggleSettings();
+        }
     }
 
     public void SettingsOpen()

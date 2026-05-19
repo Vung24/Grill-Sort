@@ -1,0 +1,32 @@
+{
+    "appleSKU": "",
+    "appleTeamID": "",
+    "enableCodelessAutoInitialization": true,
+    "enableUnityGamingServicesAutoInitialization": false,
+    "products": [
+        {
+            "id": "",
+            "type": 0,
+            "storeIDs": [],
+            "defaultDescription": {
+                "googleLocale": 21,
+                "title": "",
+                "description": ""
+            },
+            "screenshotPath": "",
+            "applePriceTier": 0,
+            "googlePrice": {
+                "data": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "num": 0.0
+            },
+            "pricingTemplateID": "",
+            "descriptions": [],
+            "payouts": []
+        }
+    ]
+}

@@ -4,6 +4,7 @@ using UnityEngine;
 public class GameHintSystem : MonoBehaviour
 {
     [SerializeField] private float _hintCheckInterval = 10f;
+    [SerializeField] private GameHintBoost _boostHint;
 
     private float _hintTimer;
     private List<GrillStation> _grillStations;
@@ -12,6 +13,15 @@ public class GameHintSystem : MonoBehaviour
     {
         _grillStations = grillStations;
         _hintTimer = 0f;
+        if (_boostHint == null)
+        {
+            _boostHint = GetComponent<GameHintBoost>();
+        }
+        if (_boostHint == null)
+        {
+            _boostHint = gameObject.AddComponent<GameHintBoost>();
+        }
+        _boostHint.Initialize(_grillStations);
     }
 
     public void ResetHintTimer()
@@ -44,6 +54,11 @@ public class GameHintSystem : MonoBehaviour
     private void TryShowHint()
     {
         if (_grillStations == null || _grillStations.Count == 0)
+        {
+            return;
+        }
+
+        if (_boostHint != null && _boostHint.TryShowBoostHint())
         {
             return;
         }

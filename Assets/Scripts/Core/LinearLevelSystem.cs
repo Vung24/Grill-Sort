@@ -41,6 +41,7 @@ public class LinearLevelSystem : MonoBehaviour
     private int _currentLevel;
     private int _highestLevel;
     private bool _hasLoadedProgress;
+    private bool _isSceneLoading;
 
     public event System.Action<int> OnLevelStarted;
     public event System.Action<int, bool> OnLevelCompleted;
@@ -57,7 +58,6 @@ public class LinearLevelSystem : MonoBehaviour
         }
 
         Instance = this;
-        DontDestroyOnLoad(gameObject);
         Initialize();
     }
 
@@ -81,9 +81,15 @@ public class LinearLevelSystem : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        _isSceneLoading = false;
+
         if (scene.name == _gameSceneName)
         {
             StartCoroutine(DelayedStartLevel());
+        }
+        else if (scene.name == _menuSceneName)
+        {
+            HideMenuCollectionPopups();
         }
     }
 
@@ -91,6 +97,23 @@ public class LinearLevelSystem : MonoBehaviour
     {
         yield return new WaitForEndOfFrame();
         StartCurrentLevel();
+    }
+
+    private static void HideMenuCollectionPopups()
+    {
+        CollectionPopup[] popups = FindObjectsOfType<CollectionPopup>(true);
+        if (popups == null || popups.Length == 0)
+        {
+            return;
+        }
+
+        for (int i = 0; i < popups.Length; i++)
+        {
+            if (popups[i] != null)
+            {
+                popups[i].gameObject.SetActive(false);
+            }
+        }
     }
 
     private void LoadProgress()
@@ -105,8 +128,8 @@ public class LinearLevelSystem : MonoBehaviour
         {
             return;
         }
-
-        ResetProgress();
+        // EnergyManager.EnsureInstance().OnLose();
+        // ResetProgress();
         LoadProgress();
         _hasLoadedProgress = true;
     }
@@ -126,11 +149,11 @@ public class LinearLevelSystem : MonoBehaviour
 
         if (CoinManager.Instance != null)
         {
-            CoinManager.Instance.SetCoins(200);
+            CoinManager.Instance.SetCoins(500);
         }
         else
         {
-            PlayerPrefs.SetInt("Currency_Coin", 200);
+            PlayerPrefs.SetInt("Currency_Coin", 500);
             PlayerPrefs.Save();
         }
 
@@ -215,33 +238,44 @@ public class LinearLevelSystem : MonoBehaviour
 
     public void LoadGameScene()
     {
+        if (_isSceneLoading)
+        {
+            return;
+        }
+
+        _isSceneLoading = true;
         Time.timeScale = 1f;
         SceneManager.LoadScene(_gameSceneName);
     }
 
     public void LoadMenuScene()
     {
+        if (_isSceneLoading)
+        {
+            return;
+        }
+
+        _isSceneLoading = true;
         Time.timeScale = 1f;
         SceneManager.LoadScene(_menuSceneName);
     }
 
-    public int GetDifficultyTier(int levelNumber)
-    {
-        if (levelNumber <= 5) return 1;
-        if (levelNumber <= 10) return 2;
-        if (levelNumber <= 20) return 3;
-        return 4;
-    }
+    // public int GetDifficultyTier(int levelNumber)
+    // {
+    //     if (levelNumber <= 5) return 0;
+    //     if (levelNumber <= 10) return 1;
+    //     return 2;
+    // }
 
-    public int CurrentDifficulty => GetDifficultyTier(_currentLevel);
+    // public int CurrentDifficulty => GetDifficultyTier(_currentLevel);
 
     public string GetDifficultyName(int tier)
     {
         return tier switch
         {
-            1 => "Easy",
-            2 => "Medium",
-            3 => "Hard",
+            0 => "Easy",
+            1 => "Medium",
+            2 => "Hard",
             _ => "Unknown"
         };
     }

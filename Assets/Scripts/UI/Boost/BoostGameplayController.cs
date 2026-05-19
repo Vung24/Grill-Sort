@@ -185,7 +185,6 @@ public class BoostGameplayController : MonoBehaviour
             return false;
         }
 
-        // Rule: swap all currently visible foods 1-1 with hidden foods.
         if (hiddenImages.Count < visibleSlots.Count)
         {
             Debug.Log($"Boost SwapForMerge: not enough hidden foods ({hiddenImages.Count}) for visible foods ({visibleSlots.Count}).");
@@ -216,6 +215,7 @@ public class BoostGameplayController : MonoBehaviour
         }
 
         ApplySwap(assignment);
+        TriggerImmediateMergeAfterSwap();
 
         _hintSystem?.ResetHintTimer();
         return true;
@@ -259,45 +259,65 @@ public class BoostGameplayController : MonoBehaviour
         }
 
         Dictionary<string, int> hiddenCountByType = CountHidden(availableHidden);
-        List<string> typeCandidates = new List<string>();
-        foreach (KeyValuePair<string, int> pair in hiddenCountByType)
+        Dictionary<GrillStation, List<FoodSlot>> slotsByGrill = new Dictionary<GrillStation, List<FoodSlot>>();
+        foreach (FoodSlot slot in visibleSlots)
         {
-            if (pair.Value >= 3)
+            if (slot == null || assignment.ContainsKey(slot))
             {
-                typeCandidates.Add(pair.Key);
+                continue;
             }
+
+            if (!slotOwnerByVisibleSlot.TryGetValue(slot, out GrillStation grill) || grill == null)
+            {
+                continue;
+            }
+
+            if (!slotsByGrill.ContainsKey(grill))
+            {
+                slotsByGrill[grill] = new List<FoodSlot>();
+            }
+
+            slotsByGrill[grill].Add(slot);
         }
 
-        if (typeCandidates.Count == 0)
+        if (slotsByGrill.Count == 0)
         {
             return false;
         }
 
-        for (int i = 0; i < typeCandidates.Count; i++)
+        foreach (KeyValuePair<GrillStation, List<FoodSlot>> grillPair in slotsByGrill)
         {
-            int swapIndex = Random.Range(i, typeCandidates.Count);
-            string temp = typeCandidates[i];
-            typeCandidates[i] = typeCandidates[swapIndex];
-            typeCandidates[swapIndex] = temp;
-        }
-
-        foreach (string type in typeCandidates)
-        {
-            List<FoodSlot> targetSlots = PickSplitSlots(visibleSlots, assignment, slotOwnerByVisibleSlot);
-            if (targetSlots == null || targetSlots.Count < 3)
+            List<FoodSlot> grillSlots = grillPair.Value;
+            int requiredCount = grillSlots.Count;
+            if (requiredCount <= 0)
             {
                 continue;
             }
 
-            List<Image> selectedHidden = TakeHidden(type, 3, availableHidden);
-            if (selectedHidden == null || selectedHidden.Count < 3)
+            List<string> typeCandidates = new List<string>();
+            foreach (KeyValuePair<string, int> pair in hiddenCountByType)
+            {
+                if (pair.Value >= requiredCount)
+                {
+                    typeCandidates.Add(pair.Key);
+                }
+            }
+
+            if (typeCandidates.Count == 0)
             {
                 continue;
             }
 
-            for (int i = 0; i < 3; i++)
+            string type = typeCandidates[Random.Range(0, typeCandidates.Count)];
+            List<Image> selectedHidden = TakeHidden(type, requiredCount, availableHidden);
+            if (selectedHidden == null || selectedHidden.Count < requiredCount)
             {
-                assignment[targetSlots[i]] = selectedHidden[i];
+                continue;
+            }
+
+            for (int i = 0; i < requiredCount; i++)
+            {
+                assignment[grillSlots[i]] = selectedHidden[i];
             }
 
             return true;
@@ -402,6 +422,21 @@ public class BoostGameplayController : MonoBehaviour
             pair.Value.gameObject.SetActive(true);
             _boostFxController?.PlayHiddenSwapFx(pair.Value);
             AudioManager.Instance?.PlaySwap();
+        }
+    }
+
+    private void TriggerImmediateMergeAfterSwap()
+    {
+        if (_grillStations == null)
+        {
+            return;
+        }
+
+        foreach (GrillStation grill in _grillStations)
+        {
+            if (grill == null || !grill.gameObject.activeInHierarchy) continue;
+            if (grill.TrayContainer == null || !grill.TrayContainer.gameObject.activeInHierarchy) continue;
+            grill.OnCheckMerge();
         }
     }
 

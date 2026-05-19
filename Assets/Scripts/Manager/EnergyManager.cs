@@ -5,20 +5,14 @@ public class EnergyManager : MonoBehaviour
 {
     public static EnergyManager Instance { get; private set; }
 
-    [Header("Settings")]
-    [SerializeField] private int _maxHearts = 5;
-    [SerializeField] private int _regenMinutes = 30;
-
-    private const string HeartsKey = "Energy_Current";
-    private const string NextRegenKey = "Energy_NextRegenTicks";
-
-    private int _currentHearts;
-    private long _nextRegenTicks;
-
     public event Action OnEnergyChanged;
 
     public static EnergyManager EnsureInstance()
     {
+        if (Instance != null)
+        {
+            return Instance;
+        }
 
         EnergyManager existing = FindObjectOfType<EnergyManager>();
         if (existing != null)
@@ -35,128 +29,51 @@ public class EnergyManager : MonoBehaviour
     {
         if (Instance != null && Instance != this)
         {
-            Destroy(this);
+            Destroy(gameObject);
             return;
         }
 
         Instance = this;
-        DontDestroyOnLoad(gameObject);
-
-        Load();
-        RecalculateEnergy();
+        BindEnergy();
     }
 
-    private void Update()
+    private void OnDestroy()
     {
-        if (_currentHearts >= _maxHearts)
+        UnbindEnergy();
+        if (Instance == this)
         {
-            return;
-        }
-
-        if (_nextRegenTicks <= 0)
-        {
-            _nextRegenTicks = DateTime.UtcNow.AddMinutes(_regenMinutes).Ticks;
-            Save();
-            OnEnergyChanged?.Invoke();
-            return;
-        }
-
-        DateTime now = DateTime.UtcNow;
-        if (now.Ticks >= _nextRegenTicks)
-        {
-            RecalculateEnergy();
+            Instance = null;
         }
     }
 
-    public bool CanPlay()
+    public bool CanPlay() => Energy.EnsureInstance().CanPlay();
+    public void OnLose() => Energy.EnsureInstance().OnLose();
+    public void ResetHearts() => Energy.EnsureInstance().ResetHearts();
+    public int CurrentHearts => Energy.EnsureInstance().CurrentHearts;
+    public int MaxHearts => Energy.EnsureInstance().MaxHearts;
+    public bool IsFull => Energy.EnsureInstance().IsFull;
+    public TimeSpan TimeToNext => Energy.EnsureInstance().TimeToNext;
+
+    private void BindEnergy()
     {
-        return _currentHearts > 0;
+        Energy energy = Energy.EnsureInstance();
+        if (energy != null)
+        {
+            energy.OnEnergyChanged -= ForwardEnergyChanged;
+            energy.OnEnergyChanged += ForwardEnergyChanged;
+        }
     }
 
-    public void OnLose()
+    private void UnbindEnergy()
     {
-        if (_currentHearts <= 0)
+        if (Energy.Instance != null)
         {
-            return;
+            Energy.Instance.OnEnergyChanged -= ForwardEnergyChanged;
         }
+    }
 
-        _currentHearts = Mathf.Max(0, _currentHearts - 1);
-        if (_currentHearts < _maxHearts && _nextRegenTicks <= 0)
-        {
-            _nextRegenTicks = DateTime.UtcNow.AddMinutes(_regenMinutes).Ticks;
-        }
-
-        Save();
+    private void ForwardEnergyChanged()
+    {
         OnEnergyChanged?.Invoke();
-    }
-
-    public int CurrentHearts => _currentHearts;
-    public int MaxHearts => _maxHearts;
-    public bool IsFull => _currentHearts >= _maxHearts;
-
-    public TimeSpan TimeToNext
-    {
-        get
-        {
-            if (_currentHearts >= _maxHearts || _nextRegenTicks <= 0)
-            {
-                return TimeSpan.Zero;
-            }
-
-            long remainingTicks = _nextRegenTicks - DateTime.UtcNow.Ticks;
-            if (remainingTicks < 0) remainingTicks = 0;
-            return TimeSpan.FromTicks(remainingTicks);
-        }
-    }
-
-    private void RecalculateEnergy()
-    {
-        if (_currentHearts >= _maxHearts)
-        {
-            _nextRegenTicks = 0;
-            Save();
-            OnEnergyChanged?.Invoke();
-            return;
-        }
-
-        DateTime now = DateTime.UtcNow;
-        if (_nextRegenTicks <= 0)
-        {
-            _nextRegenTicks = now.AddMinutes(_regenMinutes).Ticks;
-        }
-
-        while (_currentHearts < _maxHearts && now.Ticks >= _nextRegenTicks)
-        {
-            _currentHearts++;
-            _nextRegenTicks = new DateTime(_nextRegenTicks, DateTimeKind.Utc)
-                .AddMinutes(_regenMinutes)
-                .Ticks;
-        }
-
-        if (_currentHearts >= _maxHearts)
-        {
-            _nextRegenTicks = 0;
-        }
-
-        Save();
-        OnEnergyChanged?.Invoke();
-    }
-
-    private void Load()
-    {
-        _currentHearts = PlayerPrefs.GetInt(HeartsKey, _maxHearts);
-
-        string ticksStr = PlayerPrefs.GetString(NextRegenKey, "0");
-        if (!long.TryParse(ticksStr, out _nextRegenTicks))
-        {
-            _nextRegenTicks = 0;
-        }
-    }
-
-    private void Save()
-    {
-        PlayerPrefs.SetInt(HeartsKey, _currentHearts);
-        PlayerPrefs.SetString(NextRegenKey, _nextRegenTicks.ToString());
-        PlayerPrefs.Save();
     }
 }

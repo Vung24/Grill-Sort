@@ -82,6 +82,8 @@ public class BoostManager : MonoBehaviour
         return _boostGameplayController != null && _boostGameplayController.UseBoostRemoveThree();
     }
 
+    public BoostRemove RemoveBoostButton => _boostRemove;
+
     public bool UseSwapForMerge()
     {
         return _boostGameplayController != null && _boostGameplayController.UseBoostSwapForMerge();

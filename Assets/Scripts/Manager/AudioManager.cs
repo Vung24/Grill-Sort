@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class AudioManager : MonoBehaviour
 {
@@ -16,13 +17,18 @@ public class AudioManager : MonoBehaviour
     [SerializeField] public AudioClip[] comboClips;
 
     private bool soundOn = true;
+    [SerializeField] private string gameSceneName = "MainScene";
 
     void Awake()
     {
         if (Instance != null && Instance != this)
         {
-            Destroy(gameObject);
-            return;
+            // Keep one instance per scene; replace stale instance when changing scenes.
+            if (Instance.gameObject.scene == gameObject.scene)
+            {
+                Destroy(gameObject);
+                return;
+            }
         }
 
         Instance = this;
@@ -32,8 +38,19 @@ public class AudioManager : MonoBehaviour
 
     void Start()
     {
-        PlayBackGroundMusic();
-        PlayMissionStart();
+        if (SceneManager.GetActiveScene().name == gameSceneName)
+        {
+            PlayBackGroundMusic();
+            PlayMissionStart();
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            Instance = null;
+        }
     }
     public void LoadCobmboClip()
     {
@@ -42,6 +59,8 @@ public class AudioManager : MonoBehaviour
     }
     public void PlayBackGroundMusic()
     {
+        if (backgroundAudio == null || backGroundClip == null) return;
+        if (backgroundAudio.clip == backGroundClip && backgroundAudio.isPlaying) return;
         backgroundAudio.clip = backGroundClip;
         backgroundAudio.Play();
     }
@@ -94,8 +113,15 @@ public class AudioManager : MonoBehaviour
     {
         soundOn = !soundOn;
 
-        backgroundAudio.mute = !soundOn;
-        effectAudio.mute = !soundOn;
+        if (backgroundAudio != null)
+        {
+            backgroundAudio.mute = !soundOn;
+        }
+
+        if (effectAudio != null)
+        {
+            effectAudio.mute = !soundOn;
+        }
     }
 
     public bool IsSoundOn() => soundOn;

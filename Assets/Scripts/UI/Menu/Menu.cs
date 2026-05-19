@@ -64,8 +64,10 @@ public class Menu : MonoBehaviour
         {
             if (EnergyManager.Instance != null && !EnergyManager.Instance.CanPlay())
             {
+                Debug.LogWarning("Play blocked: not enough energy.");
                 return;
             }
+
             LinearLevelSystem.EnsureInstance().ContinueGame();
         });
     }
@@ -88,14 +90,15 @@ public class Menu : MonoBehaviour
     }
     private void AnimateButtonClick(Button button, System.Action callback)
     {
+        callback?.Invoke();
+
         if (button == null)
         {
-            callback?.Invoke();
             return;
         }
 
-        button.transform.DOPunchScale(Vector3.one * 0.1f, 0.2f, 5, 0.5f)
-            .OnComplete(() => callback?.Invoke());
+        button.transform.DOKill();
+        button.transform.DOPunchScale(Vector3.one * 0.1f, 0.2f, 5, 0.5f);
     }
     public void PlayGame()
     {

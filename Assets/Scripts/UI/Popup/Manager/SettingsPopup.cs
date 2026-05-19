@@ -2,7 +2,6 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using DG.Tweening;
-using TMPro;
 
 public class SettingsPopup : MonoBehaviour
 {
@@ -12,7 +11,7 @@ public class SettingsPopup : MonoBehaviour
     [Header("Popup")]
     [SerializeField] private GameObject _settingPopup;
     [SerializeField] private RestartPopup _restartPopup;
-    [SerializeField] private TextMeshProUGUI _levelText;
+    [SerializeField] private HeaderPopup _headerPopup;
 
     [Header("Audio Settings")]
     [SerializeField] private ButtonEffectLogic _btnSound;
@@ -32,7 +31,6 @@ public class SettingsPopup : MonoBehaviour
             _settingPopup.SetActive(false);
         }
         _restartPopup?.ClosePopup();
-        UpdateLevel();
     }
 
     private void OnDestroy()
@@ -56,6 +54,8 @@ public class SettingsPopup : MonoBehaviour
         }
         isOpen = true;
         GameManager.Instance?.SetTimerPaused(true);
+        _headerPopup?.UpdateLevel();
+        UpdateSoundIcon();
         _settingPopup.SetActive(true);
         _settingPopup.transform.DOScale(Vector3.one, 0.25f).SetEase(Ease.OutBack);
     }
@@ -96,16 +96,6 @@ public class SettingsPopup : MonoBehaviour
         {
             _settingPopup.SetActive(false);
         }
-    }
-    public void UpdateLevel()
-    {
-        if (_levelText == null)
-        {
-            return;
-        }
-
-        int currentLevel = LinearLevelSystem.EnsureInstance().CurrentLevel;
-        _levelText.text = $"<size=50>Level {currentLevel}</size>";
     }
 
     public void ToggleSound()
@@ -148,11 +138,6 @@ public class SettingsPopup : MonoBehaviour
             playAgain.onClick.AddListener(LoadRestartPopup);
         }
 
-        if (_btnSound != null)
-        {
-            _btnSound.onClick.RemoveListener(ToggleSound);
-            _btnSound.onClick.AddListener(ToggleSound);
-        }
     }
 
     private void UnbindButtons()
@@ -161,7 +146,6 @@ public class SettingsPopup : MonoBehaviour
         if (Close != null) Close.onClick.RemoveListener(CloseSettings);
         if (Menu != null) Menu.onClick.RemoveListener(LoadMenu);
         if (playAgain != null) playAgain.onClick.RemoveListener(LoadRestartPopup);
-        if (_btnSound != null) _btnSound.onClick.RemoveListener(ToggleSound);
     }
     private void OnDisable()
     {

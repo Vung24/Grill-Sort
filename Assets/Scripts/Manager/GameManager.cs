@@ -186,10 +186,10 @@ public class GameManager : MonoBehaviour
     public int TotalItemsToMerge => _totalItemsToMerge;
     public bool HasMovedFood => _hasMovedFood;
     public bool IsLevelComplete => _levelComplete;
-    public bool IsLevelWon => _levelWon;
     public EnumManager.LevelState CurrentLevelState => _currentLevelState;
     public EnumManager.LoseReason CurrentLoseReason => _currentLoseReason;
     public bool IsTimerPaused => TimeManager.Instance != null && TimeManager.Instance.IsTimerPaused;
+    public GameplayConditionController ConditionController => _conditionController;
 
     public void MarkFoodMoved()
     {

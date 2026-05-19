@@ -7,7 +7,7 @@ public class RewardPopup : MonoBehaviour
     [SerializeField] private ButtonEffectLogic _claimButton;
     [SerializeField] private ButtonEffectLogic _claimX2Button;
     [Header("Reward UI")]
-    [SerializeField] private int _baseRewardCoins = 50;
+    // [SerializeField] private int _baseRewardCoins = 50;
     [SerializeField] private TextMeshProUGUI textMeshProUGUI;
 
     void Awake()

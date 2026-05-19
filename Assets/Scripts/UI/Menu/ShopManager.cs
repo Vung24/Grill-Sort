@@ -14,11 +14,30 @@ public class ShopManager : MonoBehaviour
     [SerializeField] private Sprite _swapBoostSprite;
     [SerializeField] private Sprite _addTimeBoostSprite;
 
+    private void Awake()
+    {
+        if (_collectionPopup != null)
+        {
+            _collectionPopup.gameObject.SetActive(false);
+        }
+    }
+
     void Start()
     {
-        _removeBoostButton.onClick.AddListener(OnClickBuyRemoveBoost);
-        _swapBoostButton.onClick.AddListener(OnClickBuySwapBoost);
-        _addTimeBoostButton.onClick.AddListener(OnClickBuyAddTimeBoost);
+        if (_removeBoostButton != null)
+        {
+            _removeBoostButton.onClick.AddListener(OnClickBuyRemoveBoost);
+        }
+
+        if (_swapBoostButton != null)
+        {
+            _swapBoostButton.onClick.AddListener(OnClickBuySwapBoost);
+        }
+
+        if (_addTimeBoostButton != null)
+        {
+            _addTimeBoostButton.onClick.AddListener(OnClickBuyAddTimeBoost);
+        }
 
         if (_collectionPopup != null)
         {

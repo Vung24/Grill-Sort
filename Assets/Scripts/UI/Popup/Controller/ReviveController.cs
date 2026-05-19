@@ -21,10 +21,9 @@ public class ReviveController : MonoBehaviour
         _gameManager.SetCurrentLoseReason(reason);
         _gameManager.SetTimerVisibleForController(false);
 
-        if (reason == EnumManager.LoseReason.OutOfSlot)
+        if (reason == EnumManager.LoseReason.OutOfSlot || reason == EnumManager.LoseReason.TimeUp)
         {
             _gameManager.SetCurrentLevelState(EnumManager.LevelState.RevivePanel);
-            _gameManager.SetCurrentLoseReason(EnumManager.LoseReason.RevivePanel);
             UIManager.Instance?.ShowRevivePopup();
             return;
         }
@@ -37,7 +36,7 @@ public class ReviveController : MonoBehaviour
 
     public void CloseRevivePanelAndShowLose()
     {
-        if (_gameManager == null || _gameManager.CurrentLoseReason != EnumManager.LoseReason.RevivePanel)
+        if (_gameManager == null || _gameManager.CurrentLevelState != EnumManager.LevelState.RevivePanel)
         {
             return;
         }
@@ -45,7 +44,6 @@ public class ReviveController : MonoBehaviour
         UIManager.Instance?.HideRevivePopup();
 
         _gameManager.SetCurrentLevelState(EnumManager.LevelState.Lose);
-        _gameManager.SetCurrentLoseReason(EnumManager.LoseReason.OutOfSlot);
         UIManager.Instance?.ShowLosePopup();
         _gameManager.ConsumeEnergyForController();
         Debug.Log("Level Failed!");
@@ -89,19 +87,27 @@ public class ReviveController : MonoBehaviour
         _gameManager.SetLevelComplete(false);
         _gameManager.SetLevelWon(false);
         _gameManager.SetCurrentLevelState(EnumManager.LevelState.Playing);
-        _gameManager.SetCurrentLoseReason(EnumManager.LoseReason.None);
         _gameManager.SetTimerVisibleForController(true);
-
-        bool usedSwap = BoostManager.Instance != null && BoostManager.Instance.UseSwapForMerge();
-        if (usedSwap)
+        EnumManager.LoseReason loseReason = _gameManager.CurrentLoseReason;
+        bool revived = false;
+        if (loseReason == EnumManager.LoseReason.TimeUp)
         {
+            revived = BoostManager.Instance != null && BoostManager.Instance.UseAddThirtySeconds();
+        }
+        else
+        {
+            revived = BoostManager.Instance != null && BoostManager.Instance.UseSwapForMerge();
+        }
+
+        if (revived)
+        {
+            _gameManager.SetCurrentLoseReason(EnumManager.LoseReason.None);
             return true;
         }
 
         _gameManager.SetLevelComplete(true);
         _gameManager.SetLevelWon(false);
         _gameManager.SetCurrentLevelState(EnumManager.LevelState.RevivePanel);
-        _gameManager.SetCurrentLoseReason(EnumManager.LoseReason.RevivePanel);
         _gameManager.SetTimerVisibleForController(false);
         UIManager.Instance?.ShowRevivePopup();
 

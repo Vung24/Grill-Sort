@@ -20,13 +20,13 @@ public class Utillities : MonoBehaviour
     }
     public static List<T> TakeAndRemoveRandom<T>(List<T> source, int n) //lay va xoa phan tu random trong danh sach
     {
-        List<T> result = new List<T>(); //tao danh sach ket qua
+        List<T> result = new List<T>(); 
         n = Mathf.Min(n, source.Count); //dam bao so luong can lay khong vuot qua so luong hien co
         for (int i = 0; i < n; i++)
         {
-            int randIndex = Random.Range(0, source.Count); //lay chi so random trong khoang so luong con lai
-            result.Add(source[randIndex]); //them phan tu vao danh sach ket qua
-            source.RemoveAt(randIndex); //xoa phan tu da lay khoi danh sach nguon
+            int randIndex = Random.Range(0, source.Count); 
+            result.Add(source[randIndex]); 
+            source.RemoveAt(randIndex); 
         }
         return result;
     }

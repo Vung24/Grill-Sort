@@ -25,6 +25,14 @@ public class CollectionPopup : MonoBehaviour
         }
     }
 
+    private void OnDestroy()
+    {
+        if (_claimButton != null)
+        {
+            _claimButton.onClick.RemoveListener(OnClaimButtonClicked);
+        }
+    }
+
     public void ShowPopup(Sprite itemSprite, BoostType boostType)
     {
         _currentBoostType = boostType;

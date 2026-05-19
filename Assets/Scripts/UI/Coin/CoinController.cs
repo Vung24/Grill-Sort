@@ -16,11 +16,6 @@ public class CoinController : MonoBehaviour
             return;
         }
         Instance = this;
-
-        if (_coinText == null)
-        {
-            _coinText = GetComponentInChildren<TextMeshProUGUI>(true);
-        }
     }
 
     private void OnDestroy()
